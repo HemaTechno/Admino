@@ -6,7 +6,7 @@
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
   <style>
     :root {
@@ -31,7 +31,7 @@
     
     body {
       font-family: "Cairo", "Tajawal", sans-serif;
-      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       padding: 20px;
       direction: rtl;
@@ -40,7 +40,7 @@
     }
     
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       padding: 20px;
     }
@@ -48,18 +48,18 @@
     header {
       margin-bottom: 30px;
       text-align: center;
+      color: white;
     }
     
     h1 {
       font-size: 2.5rem;
-      color: var(--primary);
       margin-bottom: 10px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
     
     .subtitle {
       font-size: 1.1rem;
-      color: var(--gray);
+      opacity: 0.9;
       margin-bottom: 20px;
     }
     
@@ -152,22 +152,28 @@
     
     .qr-section {
       margin: 30px 0;
-      padding: 20px;
+      padding: 30px;
       background: var(--light);
       border-radius: var(--border-radius);
       display: none;
+      border: 1px solid #e2e8f0;
     }
     
     .qr-container {
       position: relative;
       display: inline-block;
       margin: 20px auto;
-    }
-    
-    #qrCanvas {
-      border: 15px solid white;
+      padding: 20px;
+      background: white;
       border-radius: 16px;
       box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    #qrCode {
+      display: block;
+      margin: 0 auto;
+      border: 10px solid white;
+      border-radius: 8px;
       background: white;
     }
     
@@ -187,6 +193,12 @@
       font-size: 1.2rem;
       box-shadow: 0 5px 15px rgba(124, 58, 237, 0.3);
       z-index: 10;
+    }
+    
+    .qr-info {
+      margin-top: 15px;
+      color: var(--gray);
+      font-size: 0.9rem;
     }
     
     .attendance-section {
@@ -254,19 +266,18 @@
     footer {
       margin-top: 40px;
       text-align: center;
-      color: var(--gray);
+      color: rgba(255, 255, 255, 0.8);
       font-size: 0.9rem;
     }
     
     .footer-link {
-      color: var(--primary);
+      color: white;
       text-decoration: none;
       font-weight: 600;
       transition: var(--transition);
     }
     
     .footer-link:hover {
-      color: var(--primary-dark);
       text-decoration: underline;
     }
     
@@ -284,9 +295,13 @@
         font-size: 2rem;
       }
       
-      #qrCanvas {
-        width: 280px !important;
-        height: 280px !important;
+      .qr-container {
+        padding: 15px;
+      }
+      
+      #qrCode {
+        width: 250px;
+        height: 250px;
       }
       
       .qr-timer {
@@ -335,8 +350,10 @@
       
       <div class="qr-container">
         <div class="qr-timer" id="qrTimer">60</div>
-        <canvas id="qrCanvas"></canvas>
+        <canvas id="qrCode"></canvas>
       </div>
+      
+      <p class="qr-info">سيتم تحديث الرمز تلقائياً كل 60 ثانية</p>
       
       <button id="endBtn" onclick="endSession()" style="display:none; margin-top: 20px;">إنهاء الحصة</button>
     </div>
@@ -373,7 +390,14 @@
       appId: "1:24512338206:web:dfe045db59bd3434a2110f",
       measurementId: "G-HD4R7GNQ5H"
     };
-    firebase.initializeApp(firebaseConfig);
+    
+    // تهيئة Firebase
+    try {
+      firebase.initializeApp(firebaseConfig);
+    } catch (error) {
+      console.log("Firebase already initialized");
+    }
+    
     const db = firebase.firestore();
 
     let currentSessionId = null;
@@ -391,33 +415,38 @@
 
       if (!day) return;
 
-      const snapshot = await db.collection("sessionsSchedule")
-        .where("day", "==", day)
-        .get();
+      try {
+        const snapshot = await db.collection("sessionsSchedule")
+          .where("day", "==", day)
+          .get();
 
-      if (snapshot.empty) {
-        const opt = document.createElement("option");
-        opt.textContent = "لا توجد حصص في هذا اليوم";
-        opt.disabled = true;
-        select.appendChild(opt);
-        return;
-      }
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const opt = document.createElement("option");
-        opt.value = doc.id;
-        opt.textContent = `${data.subject || "مادة"} - ${data.class || "صف"} (${data.teacher || "مدرس مجهول"})`;
-        select.appendChild(opt);
-      });
-
-      select.onchange = function() {
-        if (select.value) {
-          document.getElementById("startBtn").style.display = "block";
-        } else {
-          document.getElementById("startBtn").style.display = "none";
+        if (snapshot.empty) {
+          const opt = document.createElement("option");
+          opt.textContent = "لا توجد حصص في هذا اليوم";
+          opt.disabled = true;
+          select.appendChild(opt);
+          return;
         }
-      };
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const opt = document.createElement("option");
+          opt.value = doc.id;
+          opt.textContent = `${data.subject || "مادة"} - ${data.class || "صف"} (${data.teacher || "مدرس مجهول"})`;
+          select.appendChild(opt);
+        });
+
+        select.onchange = function() {
+          if (select.value) {
+            document.getElementById("startBtn").style.display = "block";
+          } else {
+            document.getElementById("startBtn").style.display = "none";
+          }
+        };
+      } catch (error) {
+        console.error("Error loading sessions:", error);
+        alert("حدث خطأ في تحميل الحصص. يرجى المحاولة مرة أخرى.");
+      }
     }
 
     // بدء الحصة وإظهار QR
@@ -463,25 +492,38 @@
 
     async function updateQRCode() {
       if (!currentSessionId) return;
-      const token = generateToken();
-      const canvas = document.getElementById("qrCanvas");
-      const qrData = `https://admino6.netlify.app/attendance.html?session=${currentSessionId}&token=${token}`;
       
-      // جعل QR كبير وواضح
-      await QRCode.toCanvas(canvas, qrData, { 
-        width: 350,
-        margin: 2,
-        color: {
-          dark: '#1e293b',
-          light: '#ffffff'
-        }
-      });
+      try {
+        const token = generateToken();
+        const canvas = document.getElementById("qrCode");
+        const qrData = `https://admino6.netlify.app/attendance.html?session=${currentSessionId}&token=${token}`;
+        
+        // مسح Canvas الحالي
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // إنشاء QR Code جديد
+        await QRCode.toCanvas(canvas, qrData, { 
+          width: 300,
+          margin: 2,
+          color: {
+            dark: '#1e293b',
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'H'
+        });
 
-      await db.collection("sessionsSchedule").doc(currentSessionId).update({
-        currentToken: token,
-        ended: false,
-        lastUpdated: new Date()
-      });
+        await db.collection("sessionsSchedule").doc(currentSessionId).update({
+          currentToken: token,
+          ended: false,
+          lastUpdated: new Date()
+        });
+        
+        console.log("QR Code updated successfully");
+      } catch (error) {
+        console.error("Error generating QR code:", error);
+        alert("حدث خطأ في إنشاء رمز الاستجابة السريعة. يرجى المحاولة مرة أخرى.");
+      }
     }
 
     function generateToken(length = 8) {
@@ -516,26 +558,40 @@
             });
           }
           document.getElementById("attendanceCount").textContent = snapshot.size;
+        }, error => {
+          console.error("Error listening to attendance:", error);
         });
     }
 
     // إنهاء الحصة
     async function endSession() {
       if (!currentSessionId) return;
-      await db.collection("sessionsSchedule").doc(currentSessionId).update({
-        currentToken: null,
-        ended: true
-      });
-      alert("✅ تم إنهاء الحصة. لا يمكن تسجيل حضور جديد.");
-      clearQRCode();
-      document.getElementById("endBtn").style.display = "none";
-      document.getElementById("qrSection").style.display = "none";
+      
+      try {
+        await db.collection("sessionsSchedule").doc(currentSessionId).update({
+          currentToken: null,
+          ended: true
+        });
+        alert("✅ تم إنهاء الحصة. لا يمكن تسجيل حضور جديد.");
+        clearQRCode();
+        document.getElementById("endBtn").style.display = "none";
+        document.getElementById("qrSection").style.display = "none";
+      } catch (error) {
+        console.error("Error ending session:", error);
+        alert("حدث خطأ في إنهاء الحصة. يرجى المحاولة مرة أخرى.");
+      }
     }
 
     // تنظيف الـ QR
     function clearQRCode() {
-      if (qrInterval) clearInterval(qrInterval);
-      if (timerInterval) clearInterval(timerInterval);
+      if (qrInterval) {
+        clearInterval(qrInterval);
+        qrInterval = null;
+      }
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
       document.getElementById("qrSection").style.display = "none";
       document.getElementById("attendanceCount").textContent = 0;
       document.getElementById("attendanceList").innerHTML = '<div class="empty-state">لم يسجل أي طالب حضوراً بعد</div>';
