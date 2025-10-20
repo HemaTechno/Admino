@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>لوحة المدرس - تسجيل الحضور</title>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+  <style>
+    body { font-family: Arial; background:#f3f4f6; padding:20px; }
+    .card { background:#fff; padding:20px; border-radius:8px; margin-bottom:20px; max-width:800px; margin:auto; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+    input, button, select { width:100%; padding:10px; margin:6px 0; border-radius:6px; border:1px solid #ccc; box-sizing:border-box; }
+    button { cursor:pointer; background:#0369a1; color:#fff; border:none; }
+    button:hover { background:#025f91; }
+    #qrCode { text-align:center; margin:20px 0; }
+    #attendanceList { margin-top:10px; border-top:1px solid #ddd; padding-top:10px; max-height:300px; overflow-y:auto; }
+    .attendance-item { border-bottom:1px solid #eee; padding:6px 0; }
+  </style>
+</head>
+<body>
+
+  <!-- ===== Login ===== -->
+  <div class="card" id="loginCard">
+    <h2>تسجيل دخول المدرس</h2>
+    <input type="email" id="email" placeholder="البريد الإلكتروني">
+    <input type="password" id="password" placeholder="كلمة المرور">
+    <button onclick="loginStaff()">تسجيل الدخول</button>
+    <p id="loginError" style="color:red;"></p>
+  </div>
+
+  <!-- ===== Dashboard ===== -->
+  <div class="card" id="dashboardCard" style="display:none;">
+    <h2>حصص اليوم</h2>
+    <select id="sessionSelect" onchange="selectSession()">
+      <option value="">اختر الحصة</option>
+    </select>
+
+    <div id="qrCode"></div>
+    <button onclick="endSession()" style="background:#ef4444; margin-bottom:10px;">إنهاء الحصة</button>
+
+    <p>عدد الحاضرين: <span id="attendanceCount">0</span></p>
+    <div id="attendanceList"></div>
+    <button onclick="logoutStaff()">تسجيل خروج</button>
+  </div>
+
+<script>
+  // ===== Firebase Config =====
+  const firebaseConfig = {
+  apiKey: "AIzaSyBoPJbx5v6EkOqxOJkbhzHqIJdAByh79Rg",
+  authDomain: "hhhhhh-d4fb8.firebaseapp.com",
+  databaseURL: "https://hhhhhh-d4fb8-default-rtdb.firebaseio.com",
+  projectId: "hhhhhh-d4fb8",
+  storageBucket: "hhhhhh-d4fb8.appspot.com",
+  messagingSenderId: "24512338206",
+  appId: "1:24512338206:web:dfe045db59bd3434a2110f",
+  measurementId: "G-HD4R7GNQ5H"
+};
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let currentUser = null;
+  let currentSessionId = null;
+  let qrInterval = null;
+
+  // ===== Login =====
+  async function loginStaff() {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    try {
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      currentUser = userCredential.user;
+      document.getElementById("loginCard").style.display = "none";
+      document.getElementById("dashboardCard").style.display = "block";
+      loadTodaySessions();
+    } catch (err) {
+      document.getElementById("loginError").textContent = err.message;
+    }
+  }
+
+  // ===== Logout =====
+  function logoutStaff() {
+    auth.signOut().then(() => {
+      currentUser = null;
+      document.getElementById("loginCard").style.display = "block";
+      document.getElementById("dashboardCard").style.display = "none";
+      document.getElementById("sessionSelect").innerHTML = '<option value="">اختر الحصة</option>';
+      clearQRCode();
+    });
+  }
+
+  // ===== Load Today's sessions =====
+  async function loadTodaySessions() {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const snapshot = await db.collection("sessions")
+                             .where("staffEmail", "==", currentUser.email)
+                             .where("date", "==", todayStr)
+                             .get();
+    const select = document.getElementById("sessionSelect");
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const option = document.createElement("option");
+      option.value = doc.id;
+      option.textContent = `${data.subject} - ${data.class}`;
+      select.appendChild(option);
+    });
+  }
+
+  // ===== Select Session =====
+  function selectSession() {
+    const sessionId = document.getElementById("sessionSelect").value;
+    if (!sessionId) return clearQRCode();
+    currentSessionId = sessionId;
+    startQRCode();
+    listenAttendance();
+  }
+
+  // ===== Generate QR Code every 60s =====
+  function startQRCode() {
+    clearQRCode();
+    updateQRCode();
+    qrInterval = setInterval(updateQRCode, 60000); // كل 60 ثانية
+  }
+
+  function clearQRCode() {
+    if (qrInterval) clearInterval(qrInterval);
+    document.getElementById("qrCode").innerHTML = "";
+    document.getElementById("attendanceCount").textContent = 0;
+    document.getElementById("attendanceList").innerHTML = "";
+  }
+
+  async function updateQRCode() {
+    if (!currentSessionId) return;
+    const token = generateToken();
+    const qrData = `https://your-school.com/attendance?session=${currentSessionId}&token=${token}`;
+    const qrDiv = document.getElementById("qrCode");
+    qrDiv.innerHTML = "";
+    QRCode.toCanvas(qrDiv, qrData, { width:200 });
+    // سجل التوكن في الجلسة (للتحقق عند الطلاب)
+    await db.collection("sessions").doc(currentSessionId).update({ currentToken: token });
+  }
+
+  function generateToken(length = 8) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let t = "";
+    for(let i=0;i<length;i++) t+=chars.charAt(Math.floor(Math.random()*chars.length));
+    return t;
+  }
+
+  // ===== Listen attendance realtime =====
+  function listenAttendance() {
+    if (!currentSessionId) return;
+    const listDiv = document.getElementById("attendanceList");
+    db.collection("sessions").doc(currentSessionId)
+      .collection("attendance")
+      .orderBy("time", "asc")
+      .onSnapshot(snapshot => {
+        listDiv.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const item = document.createElement("div");
+          item.className = "attendance-item";
+          item.textContent = `${data.studentName} - ${new Date(data.time.seconds*1000).toLocaleTimeString()}`;
+          listDiv.appendChild(item);
+        });
+        document.getElementById("attendanceCount").textContent = snapshot.size;
+      });
+  }
+
+  // ===== End Session =====
+  async function endSession() {
+    if(!currentSessionId) return;
+    await db.collection("sessions").doc(currentSessionId).update({ currentToken: null, ended:true });
+    alert("تم إنهاء الحصة بنجاح، لا يمكن للطلاب تسجيل الحضور الآن.");
+    clearQRCode();
+  }
+</script>
+
+<p style="text-align:center; margin-top:18px;">https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw</p>
+</body>
+</html>
