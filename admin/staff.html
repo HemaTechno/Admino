@@ -3,76 +3,106 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>نظام الغياب - المدرس</title>
+<title>📋 نظام الغياب - المدرس</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <style>
   body {
-    font-family: 'Cairo', sans-serif;
-    background: #f5f7fb;
+    font-family: "Cairo", sans-serif;
+    background: linear-gradient(135deg, #eef1f7, #dbe3f0);
     text-align: center;
-    direction: rtl;
+    min-height: 100vh;
+    padding: 20px;
   }
-  h1 { color: #333; }
+  h1 {
+    color: #1a237e;
+    font-size: 26px;
+    margin-bottom: 20px;
+  }
   select, button {
-    padding: 10px;
-    margin: 8px;
+    padding: 10px 14px;
     border-radius: 10px;
     border: 1px solid #ccc;
     font-size: 16px;
+    margin: 8px;
   }
-  #qrcode {
+  button {
+    background: #1a73e8;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  button:hover {
+    background: #0d47a1;
+  }
+  #qrcode canvas {
     margin-top: 20px;
+    border: 5px solid white;
+    border-radius: 20px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
   }
-  #attendanceList {
+  #attendanceBox {
     margin-top: 30px;
-    background: #fff;
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    padding: 20px;
     width: 90%;
     max-width: 400px;
     margin-inline: auto;
+    text-align: right;
+  }
+  #attendanceList {
+    list-style: none;
+    padding: 0;
+    margin-top: 10px;
+  }
+  #attendanceList li {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
   }
 </style>
 </head>
 <body>
 
-<h1>📋 نظام الغياب - للمدرس</h1>
+<h1>📘 نظام الغياب - المدرس</h1>
 
-<label>اختر اليوم:</label>
-<select id="daySelect">
-  <option value="">-- اختر اليوم --</option>
-  <option value="السبت">السبت</option>
-  <option value="الأحد">الأحد</option>
-  <option value="الإثنين">الإثنين</option>
-  <option value="الثلاثاء">الثلاثاء</option>
-  <option value="الأربعاء">الأربعاء</option>
-  <option value="الخميس">الخميس</option>
-</select>
+<div>
+  <label>📅 اختر اليوم:</label>
+  <select id="daySelect">
+    <option value="">-- اختر اليوم --</option>
+    <option value="السبت">السبت</option>
+    <option value="الأحد">الأحد</option>
+    <option value="الإثنين">الإثنين</option>
+    <option value="الثلاثاء">الثلاثاء</option>
+    <option value="الأربعاء">الأربعاء</option>
+    <option value="الخميس">الخميس</option>
+  </select>
 
-<br>
+  <br>
 
-<label>اختر الحصة:</label>
-<select id="sessionSelect">
-  <option value="">-- اختر الحصة --</option>
-</select>
+  <label>📖 اختر الحصة:</label>
+  <select id="sessionSelect">
+    <option value="">-- اختر الحصة --</option>
+  </select>
 
-<br>
-<button id="startBtn" disabled>بدء أخذ الغياب</button>
+  <br>
+  <button id="startBtn" disabled>🚀 بدء أخذ الغياب</button>
+</div>
 
 <div id="qrcode"></div>
 
-<div id="attendanceList">
+<div id="attendanceBox">
   <h3>👥 عدد الحضور: <span id="count">0</span></h3>
-  <ul id="studentsList"></ul>
+  <ul id="attendanceList"></ul>
 </div>
 
-<p style="margin-top: 40px; font-size: 13px;">🔗 https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw</p>
+<p style="margin-top: 50px; font-size: 13px; color: #666;">🔗 https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw</p>
 
 <script>
-  // إعداد Firebase
+  // ===== إعداد Firebase =====
   const firebaseConfig = {
     apiKey: "AIzaSyBoPJbx5v6EkOqxOJkbhzHqIJdAByh79Rg",
     authDomain: "hhhhhh-d4fb8.firebaseapp.com",
@@ -87,85 +117,99 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  const daySelect = document.getElementById('daySelect');
-  const sessionSelect = document.getElementById('sessionSelect');
-  const startBtn = document.getElementById('startBtn');
-  const qrcodeDiv = document.getElementById('qrcode');
-  const countSpan = document.getElementById('count');
-  const studentsList = document.getElementById('studentsList');
+  const daySelect = document.getElementById("daySelect");
+  const sessionSelect = document.getElementById("sessionSelect");
+  const startBtn = document.getElementById("startBtn");
+  const qrcodeDiv = document.getElementById("qrcode");
+  const countEl = document.getElementById("count");
+  const attendanceList = document.getElementById("attendanceList");
 
-  let qrInterval;
   let selectedSession = null;
+  let qrInterval = null;
 
-  // تحميل الحصص عند اختيار اليوم
-  daySelect.addEventListener('change', async () => {
+  // تحميل الحصص حسب اليوم
+  daySelect.addEventListener("change", async () => {
     const day = daySelect.value;
     sessionSelect.innerHTML = '<option value="">-- اختر الحصة --</option>';
     startBtn.disabled = true;
-    qrcodeDiv.innerHTML = '';
-
+    qrcodeDiv.innerHTML = "";
     if (!day) return;
 
-    const snapshot = await db.collection("sessionsSchedule").where("day", "==", day).get();
-    if (snapshot.empty) {
-      const opt = document.createElement("option");
-      opt.textContent = "لا توجد حصص لهذا اليوم";
-      sessionSelect.appendChild(opt);
-      return;
+    try {
+      const snapshot = await db.collection("sessionsSchedule").where("day", "==", day).get();
+      if (snapshot.empty) {
+        const opt = document.createElement("option");
+        opt.textContent = "لا توجد حصص لهذا اليوم";
+        opt.disabled = true;
+        sessionSelect.appendChild(opt);
+        return;
+      }
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const opt = document.createElement("option");
+        opt.value = doc.id;
+        opt.textContent = `${data.subject} - ${data.teacher} (${data.time})`;
+        sessionSelect.appendChild(opt);
+      });
+    } catch (err) {
+      alert("حدث خطأ أثناء تحميل الحصص");
+      console.error(err);
     }
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const opt = document.createElement("option");
-      opt.value = doc.id;
-      opt.textContent = `${data.subject} - ${data.teacher} (${data.time})`;
-      sessionSelect.appendChild(opt);
-    });
   });
 
-  // عند اختيار الحصة
-  sessionSelect.addEventListener('change', () => {
+  // تفعيل زر البدء
+  sessionSelect.addEventListener("change", () => {
     startBtn.disabled = !sessionSelect.value;
-    qrcodeDiv.innerHTML = '';
   });
 
-  // زر بدء الغياب
-  startBtn.addEventListener('click', () => {
-    if (!sessionSelect.value) return alert("اختر الحصة أولًا");
+  // بدء الغياب
+  startBtn.addEventListener("click", () => {
     selectedSession = sessionSelect.value;
-    startQR();
+    if (!selectedSession) return alert("اختر الحصة أولاً");
+    generateQR();
+    if (qrInterval) clearInterval(qrInterval);
+    qrInterval = setInterval(generateQR, 60000); // كل دقيقة
+    listenAttendance();
   });
 
-  // إنشاء QR
-  function startQR() {
-    if (qrInterval) clearInterval(qrInterval);
-    generateQR();
+  // توليد QR
+  async function generateQR() {
+    const code = `${selectedSession}_${Date.now()}`;
+    const data = { sessionId: selectedSession, code };
+    qrcodeDiv.innerHTML = "";
+    QRCode.toCanvas(JSON.stringify(data), { width: 250 }, (err, canvas) => {
+      if (err) console.error(err);
+      else qrcodeDiv.appendChild(canvas);
+    });
 
-    qrInterval = setInterval(() => {
-      generateQR();
-    }, 60000); // كل دقيقة
-  }
-
-  function generateQR() {
-    const uniqueCode = `${selectedSession}_${Date.now()}`;
-    qrcodeDiv.innerHTML = '';
-    QRCode.toCanvas(qrcodeDiv, JSON.stringify({ sessionId: selectedSession, code: uniqueCode }), {
-      width: 200
+    // حفظ الكود في Firestore لتتحقق منه صفحة الطالب
+    await db.collection("qrCodes").doc(selectedSession).set({
+      sessionId: selectedSession,
+      code,
+      createdAt: new Date()
     });
   }
 
-  // عرض الحضور المباشر
-  db.collection("attendance").onSnapshot(snapshot => {
-    const data = [];
-    snapshot.forEach(doc => data.push(doc.data()));
-    const sessionData = data.filter(d => d.sessionId === selectedSession);
-    countSpan.textContent = sessionData.length;
-    studentsList.innerHTML = sessionData.map(d => `<li>${d.studentName} (${d.time})</li>`).join('');
-  });
+  // مراقبة الحضور Live
+  function listenAttendance() {
+    db.collection("attendance")
+      .where("sessionId", "==", selectedSession)
+      .orderBy("time", "desc")
+      .onSnapshot(snapshot => {
+        const students = [];
+        snapshot.forEach(doc => students.push(doc.data()));
+        countEl.textContent = students.length;
+        attendanceList.innerHTML = students
+          .map(s => `<li>👤 ${s.studentName} - 🕒 ${s.time}</li>`)
+          .join("");
+      });
+  }
 </script>
 
 </body>
 </html>
+
 
 
 
