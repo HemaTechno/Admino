@@ -40,7 +40,7 @@
       font-weight:bold;
     }
     button:hover { background:#1d4ed8; }
-    #qrCode { margin:20px 0; }
+    #qrCanvas { margin:20px 0; }
     .attendance-item {
       border-bottom:1px solid #eee;
       padding:6px;
@@ -70,7 +70,9 @@
     </select>
 
     <button id="startBtn" onclick="startSession()" style="display:none;">📸 بدء أخذ الغياب</button>
-    <div id="qrCode"></div>
+    
+    <canvas id="qrCanvas" style="display:none;"></canvas>
+    
     <button id="endBtn" onclick="endSession()" style="display:none;background:#ef4444;">إنهاء الحصة</button>
 
     <h3>👥 عدد الحاضرين: <span id="attendanceCount">0</span></h3>
@@ -162,11 +164,10 @@
     async function updateQRCode() {
       if (!currentSessionId) return;
       const token = generateToken();
-      const qrDiv = document.getElementById("qrCode");
-      qrDiv.innerHTML = "";
-
-      const qrData = `https://admino6.netlify.app/attendance.html?session=${currentSessionId}&token=${token}`;
-      QRCode.toCanvas(qrDiv, qrData, { width: 220 });
+      const canvas = document.getElementById("qrCanvas");
+      canvas.style.display = "block";
+      const qrData = `https://your-site.com/attendance.html?session=${currentSessionId}&token=${token}`;
+      await QRCode.toCanvas(canvas, qrData, { width: 220 });
 
       await db.collection("sessionsSchedule").doc(currentSessionId).update({
         currentToken: token,
@@ -218,13 +219,14 @@
     // تنظيف الـ QR
     function clearQRCode() {
       if (qrInterval) clearInterval(qrInterval);
-      document.getElementById("qrCode").innerHTML = "";
+      document.getElementById("qrCanvas").style.display = "none";
       document.getElementById("attendanceCount").textContent = 0;
       document.getElementById("attendanceList").innerHTML = "";
     }
   </script>
 </body>
 </html>
+
 
 
 
