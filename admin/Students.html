@@ -2,78 +2,442 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <title>إدارة الطلاب - تعديل / حذف</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام إدارة الطلاب - Hema Tech</title>
 
   <!-- Firebase Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
-    body { font-family: Arial, sans-serif; background:#f3f4f6; padding:20px; }
-    .card { background:#fff; border-radius:8px; padding:16px; max-width:700px; margin:14px auto; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
-    input, button { width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box; }
-    .row { display:flex; gap:10px; }
-    .row > * { flex:1; }
-    .actions { display:flex; gap:8px; }
-    .btn { cursor:pointer; border:none; color:#fff; padding:10px; border-radius:6px; }
-    .btn-add { background:#0369a1; }
-    .btn-save { background:#059669; }
-    .btn-cancel { background:#6b7280; }
-    .btn-edit { background:#f59e0b; }
-    .btn-delete { background:#ef4444; }
-    .info { background:#f8fafc; padding:10px; border-radius:6px; margin-top:8px; }
-    #studentCard { text-align:center; padding:12px; }
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #059669;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray: #6b7280;
+      --light-gray: #f3f4f6;
+      --white: #ffffff;
+      --border-radius: 12px;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+      padding: 20px;
+      min-height: 100vh;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: var(--white);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+    }
+
+    .header h1 {
+      color: var(--primary);
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .header p {
+      color: var(--gray);
+      font-size: 16px;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--border-radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .card:hover {
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .card h2 {
+      color: var(--primary);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card h2 i {
+      color: var(--primary);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: var(--transition);
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .row {
+      display: flex;
+      gap: 15px;
+    }
+
+    .row > * {
+      flex: 1;
+    }
+
+    .btn {
+      cursor: pointer;
+      border: none;
+      color: var(--white);
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-add {
+      background: var(--primary);
+    }
+
+    .btn-add:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-save {
+      background: var(--success);
+    }
+
+    .btn-save:hover {
+      background: #047857;
+    }
+
+    .btn-cancel {
+      background: var(--gray);
+    }
+
+    .btn-cancel:hover {
+      background: #4b5563;
+    }
+
+    .btn-edit {
+      background: var(--warning);
+    }
+
+    .btn-edit:hover {
+      background: #d97706;
+    }
+
+    .btn-delete {
+      background: var(--danger);
+    }
+
+    .btn-delete:hover {
+      background: #dc2626;
+    }
+
+    .info-card {
+      background: #f8fafc;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 15px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .info-item {
+      display: flex;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .info-item:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .info-label {
+      font-weight: 600;
+      min-width: 140px;
+      color: #4b5563;
+    }
+
+    .info-value {
+      color: #1f2937;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .actions .btn {
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .student-card {
+      text-align: center;
+      padding: 30px;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+    }
+
+    .student-card h3 {
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .student-info {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    .student-info div {
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .student-info div:last-child {
+      margin-bottom: 0;
+    }
+
+    .student-id {
+      font-size: 24px !important;
+      font-weight: bold;
+      margin: 10px 0 !important;
+    }
+
+    .password {
+      font-family: monospace;
+      letter-spacing: 2px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-top: 10px !important;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      padding: 20px;
+      color: var(--gray);
+      font-size: 14px;
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .row {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .actions {
+        flex-direction: column;
+      }
+      
+      .card {
+        padding: 18px;
+      }
+    }
+
+    /* Animation for alerts */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .alert {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .alert-success {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 4px solid #10b981;
+    }
+
+    .alert-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #ef4444;
+    }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>إضافة / تعديل طالب</h2>
-
-    <input type="text" id="name" placeholder="اسم الطالب">
-    <div class="row">
-      <input type="text" id="studentNumber" placeholder="رقم الطالب">
-      <input type="text" id="parentNumber" placeholder="رقم ولي الأمر">
+  <div class="container">
+    <div class="header">
+      <h1><i class="fas fa-user-graduate"></i> نظام إدارة الطلاب</h1>
+      <p>أضف، عدّل، ابحث، أو احذف سجلات الطلاب بسهولة</p>
     </div>
 
-    <div class="row">
-      <button id="addBtn" class="btn btn-add" onclick="addOrUpdateStudent()">إضافة الطالب</button>
-      <button id="cancelEditBtn" class="btn btn-cancel" style="display:none" onclick="cancelEdit()">إلغاء التعديل</button>
+    <div id="alertContainer"></div>
+
+    <div class="card">
+      <h2><i class="fas fa-user-plus"></i> إضافة / تعديل طالب</h2>
+
+      <div class="form-group">
+        <label for="name">اسم الطالب</label>
+        <input type="text" id="name" placeholder="أدخل اسم الطالب الكامل">
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label for="studentNumber">رقم الطالب</label>
+          <input type="text" id="studentNumber" placeholder="أدخل رقم هاتف الطالب">
+        </div>
+        <div class="form-group">
+          <label for="parentNumber">رقم ولي الأمر</label>
+          <input type="text" id="parentNumber" placeholder="أدخل رقم هاتف ولي الأمر">
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="addBtn" class="btn btn-add" onclick="addOrUpdateStudent()">
+          <i class="fas fa-plus"></i> إضافة الطالب
+        </button>
+        <button id="cancelEditBtn" class="btn btn-cancel hidden" onclick="cancelEdit()">
+          <i class="fas fa-times"></i> إلغاء التعديل
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-search"></i> بحث عن طالب</h2>
+      <div class="form-group">
+        <label for="searchId">ابحث باستخدام Student ID</label>
+        <div class="row">
+          <input type="number" id="searchId" placeholder="أدخل Student ID (مثال: 2250001)">
+          <button class="btn btn-add" onclick="searchStudent()">
+            <i class="fas fa-search"></i> بحث
+          </button>
+        </div>
+      </div>
+
+      <div id="searchResult" class="info-card hidden"></div>
+    </div>
+
+    <div class="card hidden" id="studentCard">
+      <h2><i class="fas fa-id-card"></i> كرت الطالب</h2>
+      <div class="student-card">
+        <div class="student-info">
+          <div id="cardName"></div>
+          <div class="student-id" id="cardId"></div>
+          <div>كلمة المرور: <span class="password" id="cardPassword"></span></div>
+        </div>
+        <div class="row">
+          <button class="btn btn-add" onclick="printCard()">
+            <i class="fas fa-print"></i> طباعة الكرت
+          </button>
+          <button class="btn btn-delete" onclick="deleteCurrentStudent()">
+            <i class="fas fa-trash"></i> حذف الطالب
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <h2>بحث عن طالب (بـ Student ID)</h2>
-    <div class="row">
-      <input type="number" id="searchId" placeholder="أدخل Student ID (مثال: 2250001)">
-      <button class="btn btn-add" onclick="searchStudent()">بحث</button>
-    </div>
-
-    <div id="searchResult" class="info" style="display:none;"></div>
-  </div>
-
-  <div class="card" id="studentCard" style="display:none;">
-    <h3>كرت الطالب</h3>
-    <div id="cardContent"></div>
-    <div class="row" style="margin-top:12px;">
-      <button class="btn btn-add" onclick="printCard()">طباعة الكرت</button>
-      <button class="btn btn-delete" onclick="deleteCurrentStudent()">حذف الطالب</button>
-    </div>
+  <div class="footer">
+    <p>تم التطوير بواسطة <a href="https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw" target="_blank">Hema Tech</a> &copy; 2023</p>
   </div>
 
 <script>
   // ===== Firebase config =====
   const firebaseConfig = {
-  apiKey: "AIzaSyBoPJbx5v6EkOqxOJkbhzHqIJdAByh79Rg",
-  authDomain: "hhhhhh-d4fb8.firebaseapp.com",
-  databaseURL: "https://hhhhhh-d4fb8-default-rtdb.firebaseio.com",
-  projectId: "hhhhhh-d4fb8",
-  storageBucket: "hhhhhh-d4fb8.appspot.com",
-  messagingSenderId: "24512338206",
-  appId: "1:24512338206:web:dfe045db59bd3434a2110f",
-  measurementId: "G-HD4R7GNQ5H"
-};
+    apiKey: "AIzaSyBoPJbx5v6EkOqxOJkbhzHqIJdAByh79Rg",
+    authDomain: "hhhhhh-d4fb8.firebaseapp.com",
+    databaseURL: "https://hhhhhh-d4fb8-default-rtdb.firebaseio.com",
+    projectId: "hhhhhh-d4fb8",
+    storageBucket: "hhhhhh-d4fb8.appspot.com",
+    messagingSenderId: "24512338206",
+    appId: "1:24512338206:web:dfe045db59bd3434a2110f",
+    measurementId: "G-HD4R7GNQ5H"
+  };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
@@ -103,7 +467,10 @@
     const studentNumber = document.getElementById("studentNumber").value.trim();
     const parentNumber = document.getElementById("parentNumber").value.trim();
 
-    if (!name || !studentNumber || !parentNumber) return alert("اكمل جميع البيانات");
+    if (!name || !studentNumber || !parentNumber) {
+      showAlert("يرجى إكمال جميع البيانات المطلوبة", "error");
+      return;
+    }
 
     if (editDocId) {
       // حفظ التعديل
@@ -114,7 +481,7 @@
           parentNumber,
           updatedAt: new Date()
         });
-        alert("✅ تم حفظ التعديلات!");
+        showAlert("✅ تم حفظ التعديلات بنجاح!", "success");
         clearForm();
         // لو تم تعديل الطالب الذي نعرضه حالياً، نحدّث العرض
         if (currentStudent && currentStudent.docId === editDocId) {
@@ -126,7 +493,7 @@
         editDocId = null;
         toggleEditMode(false);
       } catch (err) {
-        alert("❌ خطأ أثناء حفظ التعديل: " + err);
+        showAlert("❌ حدث خطأ أثناء حفظ التعديل: " + err, "error");
       }
     } else {
       // إضافة طالب جديد
@@ -141,14 +508,14 @@
           password,
           createdAt: new Date()
         });
-        alert(`✅ تم إضافة الطالب!\nStudent ID: ${studentId}\nPassword: ${password}`);
+        showAlert(`✅ تم إضافة الطالب بنجاح!<br>Student ID: <strong>${studentId}</strong><br>Password: <strong>${password}</strong>`, "success");
         clearForm();
         // عرض الكرت فوراً
         currentStudent = { docId: docRef.id, name, studentNumber, parentNumber, studentId, password };
         renderSearchResult(currentStudent);
-        document.getElementById("studentCard").style.display = "block";
+        showStudentCard(currentStudent);
       } catch (err) {
-        alert("❌ خطأ أثناء إضافة الطالب: " + err);
+        showAlert("❌ حدث خطأ أثناء إضافة الطالب: " + err, "error");
       }
     }
   }
@@ -163,13 +530,15 @@
     const addBtn = document.getElementById("addBtn");
     const cancelBtn = document.getElementById("cancelEditBtn");
     if (on) {
-      addBtn.textContent = "حفظ التعديلات";
-      addBtn.classList.remove("btn-add"); addBtn.classList.add("btn-save");
-      cancelBtn.style.display = "block";
+      addBtn.innerHTML = '<i class="fas fa-save"></i> حفظ التعديلات';
+      addBtn.classList.remove("btn-add");
+      addBtn.classList.add("btn-save");
+      cancelBtn.classList.remove("hidden");
     } else {
-      addBtn.textContent = "إضافة الطالب";
-      addBtn.classList.remove("btn-save"); addBtn.classList.add("btn-add");
-      cancelBtn.style.display = "none";
+      addBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة الطالب';
+      addBtn.classList.remove("btn-save");
+      addBtn.classList.add("btn-add");
+      cancelBtn.classList.add("hidden");
     }
   }
 
@@ -182,14 +551,17 @@
   // ===== البحث عن طالب بالـ studentId =====
   async function searchStudent() {
     const idVal = Number(document.getElementById("searchId").value);
-    if (!idVal) return alert("أدخل Student ID صحيح");
+    if (!idVal) {
+      showAlert("يرجى إدخال Student ID صحيح", "error");
+      return;
+    }
 
     const snapshot = await db.collection("students").where("studentId", "==", idVal).get();
     const container = document.getElementById("searchResult");
     if (snapshot.empty) {
-      container.style.display = "block";
+      container.classList.remove("hidden");
       container.innerHTML = "<p>لا يوجد طالب بهذا الـ ID</p>";
-      document.getElementById("studentCard").style.display = "none";
+      document.getElementById("studentCard").classList.add("hidden");
       currentStudent = null;
       editDocId = null;
       toggleEditMode(false);
@@ -201,32 +573,45 @@
     // خزن docId مع البيانات عشان نقدر نعدل/نحذف
     currentStudent = { docId: doc.id, ...data };
     renderSearchResult(currentStudent);
-    document.getElementById("studentCard").style.display = "block";
+    showStudentCard(currentStudent);
   }
 
   // ===== رسم نتيجة البحث مع أزرار تعديل وحذف =====
   function renderSearchResult(s) {
     const container = document.getElementById("searchResult");
-    container.style.display = "block";
+    container.classList.remove("hidden");
     container.innerHTML = `
-      <p><strong>اسم الطالب:</strong> ${escapeHtml(s.name)}</p>
-      <p><strong>رقم الطالب:</strong> ${escapeHtml(s.studentNumber)}</p>
-      <p><strong>رقم ولي الأمر:</strong> ${escapeHtml(s.parentNumber)}</p>
-      <p><strong>Student ID:</strong> ${escapeHtml(s.studentId)}</p>
-      <p><strong>كلمة المرور:</strong> ${escapeHtml(s.password)}</p>
-      <div style="margin-top:8px;" class="actions">
-        <button class="btn btn-edit" onclick="startEdit('${s.docId}')">تعديل</button>
-        <button class="btn btn-delete" onclick="deleteStudentById('${s.docId}')">حذف</button>
-        <button class="btn btn-add" onclick="showCardFromCurrent()">عرض الكرت</button>
+      <div class="info-item">
+        <span class="info-label">اسم الطالب:</span>
+        <span class="info-value">${escapeHtml(s.name)}</span>
       </div>
-    `;
-
-    // عرض محتوى الكرت
-    const cardContent = document.getElementById("cardContent");
-    cardContent.innerHTML = `
-      <div><strong>اسم:</strong> ${escapeHtml(s.name)}</div>
-      <div><strong>ID:</strong> ${escapeHtml(s.studentId)}</div>
-      <div><strong>كلمة المرور:</strong> ${escapeHtml(s.password)}</div>
+      <div class="info-item">
+        <span class="info-label">رقم الطالب:</span>
+        <span class="info-value">${escapeHtml(s.studentNumber)}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">رقم ولي الأمر:</span>
+        <span class="info-value">${escapeHtml(s.parentNumber)}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Student ID:</span>
+        <span class="info-value">${escapeHtml(s.studentId)}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">كلمة المرور:</span>
+        <span class="info-value">${escapeHtml(s.password)}</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-edit" onclick="startEdit('${s.docId}')">
+          <i class="fas fa-edit"></i> تعديل
+        </button>
+        <button class="btn btn-delete" onclick="deleteStudentById('${s.docId}')">
+          <i class="fas fa-trash"></i> حذف
+        </button>
+        <button class="btn btn-add" onclick="showStudentCard(currentStudent)">
+          <i class="fas fa-id-card"></i> عرض الكرت
+        </button>
+      </div>
     `;
   }
 
@@ -235,7 +620,10 @@
     if (!currentStudent || currentStudent.docId !== docId) {
       // لو لم تكن بيانات حالية مخزنة، نجيبها من الـ Firestore
       db.collection("students").doc(docId).get().then(doc => {
-        if (!doc.exists) return alert("الوثيقة غير موجودة");
+        if (!doc.exists) {
+          showAlert("الوثيقة غير موجودة", "error");
+          return;
+        }
         const d = doc.data();
         currentStudent = { docId, ...d };
         fillFormForEdit(currentStudent);
@@ -257,55 +645,78 @@
 
   // ===== حذف باستخدام docId (من زر البحث) =====
   async function deleteStudentById(docId) {
-    if (!confirm("هل متأكد أنك تريد حذف هذا الطالب؟ العملية لا يمكن التراجع عنها.")) return;
+    if (!confirm("هل أنت متأكد من حذف هذا الطالب؟ العملية لا يمكن التراجع عنها.")) return;
     try {
       await db.collection("students").doc(docId).delete();
-      alert("✅ تم حذف الطالب.");
-      document.getElementById("searchResult").style.display = "none";
-      document.getElementById("studentCard").style.display = "none";
+      showAlert("✅ تم حذف الطالب بنجاح.", "success");
+      document.getElementById("searchResult").classList.add("hidden");
+      document.getElementById("studentCard").classList.add("hidden");
       currentStudent = null;
       editDocId = null;
       toggleEditMode(false);
     } catch (err) {
-      alert("❌ حدث خطأ أثناء الحذف: " + err);
+      showAlert("❌ حدث خطأ أثناء الحذف: " + err, "error");
     }
   }
 
   // ===== زر الحذف الموجود في كرت الطالب (يحذف currentStudent) =====
   async function deleteCurrentStudent() {
-    if (!currentStudent || !currentStudent.docId) return alert("لا يوجد طالب محدد للحذف");
+    if (!currentStudent || !currentStudent.docId) {
+      showAlert("لا يوجد طالب محدد للحذف", "error");
+      return;
+    }
     await deleteStudentById(currentStudent.docId);
   }
 
-  function showCardFromCurrent() {
-    if (!currentStudent) return;
-    document.getElementById("studentCard").style.display = "block";
-    const cardContent = document.getElementById("cardContent");
-    cardContent.innerHTML = `
-      <div style="font-size:18px; margin-bottom:6px;"><strong>${escapeHtml(currentStudent.name)}</strong></div>
-      <div>ID: ${escapeHtml(currentStudent.studentId)}</div>
-      <div>Pass: ${escapeHtml(currentStudent.password)}</div>
-    `;
+  function showStudentCard(student) {
+    if (!student) return;
+    
+    document.getElementById("studentCard").classList.remove("hidden");
+    document.getElementById("cardName").textContent = student.name;
+    document.getElementById("cardId").textContent = student.studentId;
+    document.getElementById("cardPassword").textContent = student.password;
+    
     window.scrollTo({ top: document.getElementById("studentCard").offsetTop, behavior: 'smooth' });
   }
 
   // ===== طباعة الكرت (يفتح نافذة جديدة لطباعة نص الكرت) =====
   function printCard() {
-    if (!currentStudent) return alert("لا يوجد طالب لطباعة الكرت");
+    if (!currentStudent) {
+      showAlert("لا يوجد طالب لطباعة الكرت", "error");
+      return;
+    }
+    
     const content = `
-      <div style="font-family: Arial; text-align:center; padding:20px;">
-        <h2>كرت الطالب</h2>
-        <p><strong>الاسم:</strong> ${escapeHtml(currentStudent.name)}</p>
-        <p><strong>ID:</strong> ${escapeHtml(currentStudent.studentId)}</p>
-        <p><strong>كلمة المرور:</strong> ${escapeHtml(currentStudent.password)}</p>
-      </div>
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <title>كرت الطالب - ${escapeHtml(currentStudent.name)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 30px; }
+          .card { border: 2px solid #2563eb; border-radius: 12px; padding: 30px; max-width: 400px; margin: 0 auto; }
+          h2 { color: #2563eb; margin-bottom: 20px; }
+          .info { margin-bottom: 15px; font-size: 18px; }
+          .student-id { font-size: 24px; font-weight: bold; margin: 15px 0; }
+          .password { font-family: monospace; letter-spacing: 2px; background: #f3f4f6; padding: 8px 12px; border-radius: 6px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h2>كرت الطالب</h2>
+          <div class="info"><strong>الاسم:</strong> ${escapeHtml(currentStudent.name)}</div>
+          <div class="student-id">${escapeHtml(currentStudent.studentId)}</div>
+          <div class="info"><strong>كلمة المرور:</strong> <span class="password">${escapeHtml(currentStudent.password)}</span></div>
+        </div>
+      </body>
+      </html>
     `;
-    const win = window.open("", "_blank", "width=400,height=500");
+    
+    const win = window.open("", "_blank", "width=500,height=600");
     win.document.write(content);
     win.document.close();
     win.focus();
     win.print();
-    // لا نقفل النافذة تلقائياً لأن بعض المتصفحات تمنعها بعد الطباعة
   }
 
   // ===== دالة مساعدة لتفادي XSS عند وضع بيانات المستخدم في الـ HTML =====
@@ -319,10 +730,23 @@
       .replaceAll("'", "&#039;");
   }
 
+  // ===== دالة لعرض الإشعارات =====
+  function showAlert(message, type) {
+    const alertContainer = document.getElementById("alertContainer");
+    const alertClass = type === "success" ? "alert-success" : "alert-error";
+    
+    const alertDiv = document.createElement("div");
+    alertDiv.className = `alert ${alertClass}`;
+    alertDiv.innerHTML = message;
+    
+    alertContainer.appendChild(alertDiv);
+    
+    // إزالة الإشعار بعد 5 ثوانٍ
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 5000);
+  }
 </script>
-
-<!-- دايماً رابط القناة موجود :) -->
-<p style="text-align:center; margin-top:18px;">https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw</p>
 </body>
 </html>
 
