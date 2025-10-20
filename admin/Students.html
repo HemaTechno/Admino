@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>إدارة الطلاب - تعديل / حذف</title>
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; background:#f3f4f6; padding:20px; }
+    .card { background:#fff; border-radius:8px; padding:16px; max-width:700px; margin:14px auto; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+    input, button { width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box; }
+    .row { display:flex; gap:10px; }
+    .row > * { flex:1; }
+    .actions { display:flex; gap:8px; }
+    .btn { cursor:pointer; border:none; color:#fff; padding:10px; border-radius:6px; }
+    .btn-add { background:#0369a1; }
+    .btn-save { background:#059669; }
+    .btn-cancel { background:#6b7280; }
+    .btn-edit { background:#f59e0b; }
+    .btn-delete { background:#ef4444; }
+    .info { background:#f8fafc; padding:10px; border-radius:6px; margin-top:8px; }
+    #studentCard { text-align:center; padding:12px; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>إضافة / تعديل طالب</h2>
+
+    <input type="text" id="name" placeholder="اسم الطالب">
+    <div class="row">
+      <input type="text" id="studentNumber" placeholder="رقم الطالب">
+      <input type="text" id="parentNumber" placeholder="رقم ولي الأمر">
+    </div>
+
+    <div class="row">
+      <button id="addBtn" class="btn btn-add" onclick="addOrUpdateStudent()">إضافة الطالب</button>
+      <button id="cancelEditBtn" class="btn btn-cancel" style="display:none" onclick="cancelEdit()">إلغاء التعديل</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>بحث عن طالب (بـ Student ID)</h2>
+    <div class="row">
+      <input type="number" id="searchId" placeholder="أدخل Student ID (مثال: 2250001)">
+      <button class="btn btn-add" onclick="searchStudent()">بحث</button>
+    </div>
+
+    <div id="searchResult" class="info" style="display:none;"></div>
+  </div>
+
+  <div class="card" id="studentCard" style="display:none;">
+    <h3>كرت الطالب</h3>
+    <div id="cardContent"></div>
+    <div class="row" style="margin-top:12px;">
+      <button class="btn btn-add" onclick="printCard()">طباعة الكرت</button>
+      <button class="btn btn-delete" onclick="deleteCurrentStudent()">حذف الطالب</button>
+    </div>
+  </div>
+
+<script>
+  // ===== Firebase config =====
+  const firebaseConfig = {
+  apiKey: "AIzaSyBoPJbx5v6EkOqxOJkbhzHqIJdAByh79Rg",
+  authDomain: "hhhhhh-d4fb8.firebaseapp.com",
+  databaseURL: "https://hhhhhh-d4fb8-default-rtdb.firebaseio.com",
+  projectId: "hhhhhh-d4fb8",
+  storageBucket: "hhhhhh-d4fb8.appspot.com",
+  messagingSenderId: "24512338206",
+  appId: "1:24512338206:web:dfe045db59bd3434a2110f",
+  measurementId: "G-HD4R7GNQ5H"
+};
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // ===== متغيّرات حالة =====
+  let editDocId = null;      // Doc ID في Firestore عند التعديل
+  let currentStudent = null; // البيانات الحالية الموجودة بعد البحث (object)
+
+  // ===== توليد كلمة مرور عشوائية =====
+  function generatePassword(length = 6) {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let pass = "";
+    for (let i = 0; i < length; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    return pass;
+  }
+
+  // ===== الحصول على Student ID التالي (يبدأ من 2250001) =====
+  async function getNextStudentId() {
+    const snapshot = await db.collection("students").orderBy("studentId", "desc").limit(1).get();
+    if (snapshot.empty) return 2250001;
+    const lastId = snapshot.docs[0].data().studentId;
+    return Number(lastId) + 1;
+  }
+
+  // ===== إضافة أو حفظ التعديل =====
+  async function addOrUpdateStudent() {
+    const name = document.getElementById("name").value.trim();
+    const studentNumber = document.getElementById("studentNumber").value.trim();
+    const parentNumber = document.getElementById("parentNumber").value.trim();
+
+    if (!name || !studentNumber || !parentNumber) return alert("اكمل جميع البيانات");
+
+    if (editDocId) {
+      // حفظ التعديل
+      try {
+        await db.collection("students").doc(editDocId).update({
+          name,
+          studentNumber,
+          parentNumber,
+          updatedAt: new Date()
+        });
+        alert("✅ تم حفظ التعديلات!");
+        clearForm();
+        // لو تم تعديل الطالب الذي نعرضه حالياً، نحدّث العرض
+        if (currentStudent && currentStudent.docId === editDocId) {
+          currentStudent.name = name;
+          currentStudent.studentNumber = studentNumber;
+          currentStudent.parentNumber = parentNumber;
+          renderSearchResult(currentStudent);
+        }
+        editDocId = null;
+        toggleEditMode(false);
+      } catch (err) {
+        alert("❌ خطأ أثناء حفظ التعديل: " + err);
+      }
+    } else {
+      // إضافة طالب جديد
+      try {
+        const studentId = await getNextStudentId();
+        const password = generatePassword();
+        const docRef = await db.collection("students").add({
+          name,
+          studentNumber,
+          parentNumber,
+          studentId,
+          password,
+          createdAt: new Date()
+        });
+        alert(`✅ تم إضافة الطالب!\nStudent ID: ${studentId}\nPassword: ${password}`);
+        clearForm();
+        // عرض الكرت فوراً
+        currentStudent = { docId: docRef.id, name, studentNumber, parentNumber, studentId, password };
+        renderSearchResult(currentStudent);
+        document.getElementById("studentCard").style.display = "block";
+      } catch (err) {
+        alert("❌ خطأ أثناء إضافة الطالب: " + err);
+      }
+    }
+  }
+
+  function clearForm() {
+    document.getElementById("name").value = "";
+    document.getElementById("studentNumber").value = "";
+    document.getElementById("parentNumber").value = "";
+  }
+
+  function toggleEditMode(on) {
+    const addBtn = document.getElementById("addBtn");
+    const cancelBtn = document.getElementById("cancelEditBtn");
+    if (on) {
+      addBtn.textContent = "حفظ التعديلات";
+      addBtn.classList.remove("btn-add"); addBtn.classList.add("btn-save");
+      cancelBtn.style.display = "block";
+    } else {
+      addBtn.textContent = "إضافة الطالب";
+      addBtn.classList.remove("btn-save"); addBtn.classList.add("btn-add");
+      cancelBtn.style.display = "none";
+    }
+  }
+
+  function cancelEdit() {
+    editDocId = null;
+    clearForm();
+    toggleEditMode(false);
+  }
+
+  // ===== البحث عن طالب بالـ studentId =====
+  async function searchStudent() {
+    const idVal = Number(document.getElementById("searchId").value);
+    if (!idVal) return alert("أدخل Student ID صحيح");
+
+    const snapshot = await db.collection("students").where("studentId", "==", idVal).get();
+    const container = document.getElementById("searchResult");
+    if (snapshot.empty) {
+      container.style.display = "block";
+      container.innerHTML = "<p>لا يوجد طالب بهذا الـ ID</p>";
+      document.getElementById("studentCard").style.display = "none";
+      currentStudent = null;
+      editDocId = null;
+      toggleEditMode(false);
+      return;
+    }
+
+    const doc = snapshot.docs[0];
+    const data = doc.data();
+    // خزن docId مع البيانات عشان نقدر نعدل/نحذف
+    currentStudent = { docId: doc.id, ...data };
+    renderSearchResult(currentStudent);
+    document.getElementById("studentCard").style.display = "block";
+  }
+
+  // ===== رسم نتيجة البحث مع أزرار تعديل وحذف =====
+  function renderSearchResult(s) {
+    const container = document.getElementById("searchResult");
+    container.style.display = "block";
+    container.innerHTML = `
+      <p><strong>اسم الطالب:</strong> ${escapeHtml(s.name)}</p>
+      <p><strong>رقم الطالب:</strong> ${escapeHtml(s.studentNumber)}</p>
+      <p><strong>رقم ولي الأمر:</strong> ${escapeHtml(s.parentNumber)}</p>
+      <p><strong>Student ID:</strong> ${escapeHtml(s.studentId)}</p>
+      <p><strong>كلمة المرور:</strong> ${escapeHtml(s.password)}</p>
+      <div style="margin-top:8px;" class="actions">
+        <button class="btn btn-edit" onclick="startEdit('${s.docId}')">تعديل</button>
+        <button class="btn btn-delete" onclick="deleteStudentById('${s.docId}')">حذف</button>
+        <button class="btn btn-add" onclick="showCardFromCurrent()">عرض الكرت</button>
+      </div>
+    `;
+
+    // عرض محتوى الكرت
+    const cardContent = document.getElementById("cardContent");
+    cardContent.innerHTML = `
+      <div><strong>اسم:</strong> ${escapeHtml(s.name)}</div>
+      <div><strong>ID:</strong> ${escapeHtml(s.studentId)}</div>
+      <div><strong>كلمة المرور:</strong> ${escapeHtml(s.password)}</div>
+    `;
+  }
+
+  // ===== بدء التعديل: يملأ الفورم ويضع editDocId =====
+  function startEdit(docId) {
+    if (!currentStudent || currentStudent.docId !== docId) {
+      // لو لم تكن بيانات حالية مخزنة، نجيبها من الـ Firestore
+      db.collection("students").doc(docId).get().then(doc => {
+        if (!doc.exists) return alert("الوثيقة غير موجودة");
+        const d = doc.data();
+        currentStudent = { docId, ...d };
+        fillFormForEdit(currentStudent);
+      });
+    } else {
+      fillFormForEdit(currentStudent);
+    }
+  }
+
+  function fillFormForEdit(s) {
+    document.getElementById("name").value = s.name || "";
+    document.getElementById("studentNumber").value = s.studentNumber || "";
+    document.getElementById("parentNumber").value = s.parentNumber || "";
+    editDocId = s.docId;
+    toggleEditMode(true);
+    // scroll to top so المستخدم يشوف الفورم
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ===== حذف باستخدام docId (من زر البحث) =====
+  async function deleteStudentById(docId) {
+    if (!confirm("هل متأكد أنك تريد حذف هذا الطالب؟ العملية لا يمكن التراجع عنها.")) return;
+    try {
+      await db.collection("students").doc(docId).delete();
+      alert("✅ تم حذف الطالب.");
+      document.getElementById("searchResult").style.display = "none";
+      document.getElementById("studentCard").style.display = "none";
+      currentStudent = null;
+      editDocId = null;
+      toggleEditMode(false);
+    } catch (err) {
+      alert("❌ حدث خطأ أثناء الحذف: " + err);
+    }
+  }
+
+  // ===== زر الحذف الموجود في كرت الطالب (يحذف currentStudent) =====
+  async function deleteCurrentStudent() {
+    if (!currentStudent || !currentStudent.docId) return alert("لا يوجد طالب محدد للحذف");
+    await deleteStudentById(currentStudent.docId);
+  }
+
+  function showCardFromCurrent() {
+    if (!currentStudent) return;
+    document.getElementById("studentCard").style.display = "block";
+    const cardContent = document.getElementById("cardContent");
+    cardContent.innerHTML = `
+      <div style="font-size:18px; margin-bottom:6px;"><strong>${escapeHtml(currentStudent.name)}</strong></div>
+      <div>ID: ${escapeHtml(currentStudent.studentId)}</div>
+      <div>Pass: ${escapeHtml(currentStudent.password)}</div>
+    `;
+    window.scrollTo({ top: document.getElementById("studentCard").offsetTop, behavior: 'smooth' });
+  }
+
+  // ===== طباعة الكرت (يفتح نافذة جديدة لطباعة نص الكرت) =====
+  function printCard() {
+    if (!currentStudent) return alert("لا يوجد طالب لطباعة الكرت");
+    const content = `
+      <div style="font-family: Arial; text-align:center; padding:20px;">
+        <h2>كرت الطالب</h2>
+        <p><strong>الاسم:</strong> ${escapeHtml(currentStudent.name)}</p>
+        <p><strong>ID:</strong> ${escapeHtml(currentStudent.studentId)}</p>
+        <p><strong>كلمة المرور:</strong> ${escapeHtml(currentStudent.password)}</p>
+      </div>
+    `;
+    const win = window.open("", "_blank", "width=400,height=500");
+    win.document.write(content);
+    win.document.close();
+    win.focus();
+    win.print();
+    // لا نقفل النافذة تلقائياً لأن بعض المتصفحات تمنعها بعد الطباعة
+  }
+
+  // ===== دالة مساعدة لتفادي XSS عند وضع بيانات المستخدم في الـ HTML =====
+  function escapeHtml(str) {
+    if (str === undefined || str === null) return "";
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+</script>
+
+<!-- دايماً رابط القناة موجود :) -->
+<p style="text-align:center; margin-top:18px;">https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw</p>
+</body>
+</html>
+
