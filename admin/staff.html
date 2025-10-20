@@ -49,15 +49,13 @@
 <script>
   // ===== Firebase Config =====
   const firebaseConfig = {
-  apiKey: "AIzaSyBoPJbx5v6EkOqxOJkbhzHqIJdAByh79Rg",
-  authDomain: "hhhhhh-d4fb8.firebaseapp.com",
-  databaseURL: "https://hhhhhh-d4fb8-default-rtdb.firebaseio.com",
-  projectId: "hhhhhh-d4fb8",
-  storageBucket: "hhhhhh-d4fb8.appspot.com",
-  messagingSenderId: "24512338206",
-  appId: "1:24512338206:web:dfe045db59bd3434a2110f",
-  measurementId: "G-HD4R7GNQ5H"
-};
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
@@ -65,6 +63,15 @@
   let currentUser = null;
   let currentSessionId = null;
   let qrInterval = null;
+
+  // ===== Get Local Date String YYYY-MM-DD =====
+  function getTodayDateString() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
 
   // ===== Login =====
   async function loginStaff() {
@@ -94,13 +101,22 @@
 
   // ===== Load Today's sessions =====
   async function loadTodaySessions() {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const todayStr = getTodayDateString();
     const snapshot = await db.collection("sessions")
                              .where("staffEmail", "==", currentUser.email)
                              .where("date", "==", todayStr)
                              .get();
+
     const select = document.getElementById("sessionSelect");
+    select.innerHTML = '<option value="">اختر الحصة</option>'; // نظف القائمة أول
+    if (snapshot.empty) {
+      const opt = document.createElement("option");
+      opt.textContent = "لا توجد حصص اليوم";
+      opt.disabled = true;
+      select.appendChild(opt);
+      return;
+    }
+
     snapshot.forEach(doc => {
       const data = doc.data();
       const option = document.createElement("option");
@@ -183,3 +199,4 @@
 <p style="text-align:center; margin-top:18px;">https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw</p>
 </body>
 </html>
+
