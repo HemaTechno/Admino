@@ -263,6 +263,20 @@
       text-align: center;
     }
     
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
     footer {
       margin-top: 40px;
       text-align: center;
@@ -341,7 +355,10 @@
         </select>
       </div>
 
-      <button id="startBtn" onclick="startSession()" style="display:none;">📸 بدء أخذ الغياب</button>
+      <button id="startBtn" onclick="startSession()" style="display:none;">
+        <span id="startBtnText">📸 بدء أخذ الغياب</span>
+        <span id="startBtnLoading" class="loading" style="display:none;"></span>
+      </button>
     </div>
 
     <div class="qr-section" id="qrSection">
@@ -350,12 +367,15 @@
       
       <div class="qr-container">
         <div class="qr-timer" id="qrTimer">60</div>
-        <canvas id="qrCode"></canvas>
+        <canvas id="qrCode" width="300" height="300"></canvas>
       </div>
       
       <p class="qr-info">سيتم تحديث الرمز تلقائياً كل 60 ثانية</p>
       
-      <button id="endBtn" onclick="endSession()" style="display:none; margin-top: 20px;">إنهاء الحصة</button>
+      <button id="endBtn" onclick="endSession()" style="display:none; margin-top: 20px;">
+        <span id="endBtnText">إنهاء الحصة</span>
+        <span id="endBtnLoading" class="loading" style="display:none;"></span>
+      </button>
     </div>
 
     <div class="card attendance-section">
@@ -392,13 +412,15 @@
     };
     
     // تهيئة Firebase
+    let db;
     try {
       firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      console.log("Firebase initialized successfully");
     } catch (error) {
-      console.log("Firebase already initialized");
+      console.error("Error initializing Firebase:", error);
+      alert("حدث خطأ في تهيئة قاعدة البيانات. يرجى تحديث الصفحة.");
     }
-    
-    const db = firebase.firestore();
 
     let currentSessionId = null;
     let qrInterval = null;
@@ -445,30 +467,53 @@
         };
       } catch (error) {
         console.error("Error loading sessions:", error);
-        alert("حدث خطأ في تحميل الحصص. يرجى المحاولة مرة أخرى.");
+        alert("حدث خطأ في تحميل الحصص. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.");
       }
     }
 
     // بدء الحصة وإظهار QR
-    function startSession() {
+    async function startSession() {
       const id = document.getElementById("sessionSelect").value;
       if (!id) return alert("من فضلك اختر حصة أولاً");
-      currentSessionId = id;
-
-      document.getElementById("qrSection").style.display = "block";
-      startQRCode();
-      listenAttendance();
-      document.getElementById("endBtn").style.display = "block";
-      document.getElementById("startBtn").style.display = "none";
+      
+      // عرض حالة التحميل
+      document.getElementById("startBtnText").style.display = "none";
+      document.getElementById("startBtnLoading").style.display = "inline-block";
+      document.getElementById("startBtn").disabled = true;
+      
+      try {
+        currentSessionId = id;
+        
+        // التحقق من اتصال Firebase
+        const sessionDoc = await db.collection("sessionsSchedule").doc(currentSessionId).get();
+        if (!sessionDoc.exists) {
+          throw new Error("الحصة المحددة غير موجودة في قاعدة البيانات");
+        }
+        
+        document.getElementById("qrSection").style.display = "block";
+        await startQRCode();
+        listenAttendance();
+        document.getElementById("endBtn").style.display = "block";
+        document.getElementById("startBtn").style.display = "none";
+        
+      } catch (error) {
+        console.error("Error starting session:", error);
+        alert("حدث خطأ في بدء الحصة: " + error.message);
+      } finally {
+        // إعادة عرض الزر لحالته الطبيعية
+        document.getElementById("startBtnText").style.display = "inline";
+        document.getElementById("startBtnLoading").style.display = "none";
+        document.getElementById("startBtn").disabled = false;
+      }
     }
 
     // توليد QR مع عداد الوقت
-    function startQRCode() {
+    async function startQRCode() {
       clearQRCode();
-      updateQRCode();
+      await updateQRCode();
       startTimer();
-      qrInterval = setInterval(function() {
-        updateQRCode();
+      qrInterval = setInterval(async function() {
+        await updateQRCode();
         startTimer();
       }, 60000);
     }
@@ -498,13 +543,11 @@
         const canvas = document.getElementById("qrCode");
         const qrData = `https://admino6.netlify.app/attendance.html?session=${currentSessionId}&token=${token}`;
         
-        // مسح Canvas الحالي
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        console.log("Generating QR code for:", qrData);
         
         // إنشاء QR Code جديد
         await QRCode.toCanvas(canvas, qrData, { 
-          width: 300,
+          width: 280,
           margin: 2,
           color: {
             dark: '#1e293b',
@@ -513,16 +556,40 @@
           errorCorrectionLevel: 'H'
         });
 
+        // تحديث قاعدة البيانات
         await db.collection("sessionsSchedule").doc(currentSessionId).update({
           currentToken: token,
           ended: false,
-          lastUpdated: new Date()
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         console.log("QR Code updated successfully");
+        
       } catch (error) {
         console.error("Error generating QR code:", error);
-        alert("حدث خطأ في إنشاء رمز الاستجابة السريعة. يرجى المحاولة مرة أخرى.");
+        
+        // محاولة بديلة في حالة فشل المكتبة
+        try {
+          const canvas = document.getElementById("qrCode");
+          const ctx = canvas.getContext('2d');
+          
+          // رسم رسالة بديلة
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          ctx.fillStyle = '#1e293b';
+          ctx.font = '16px Cairo';
+          ctx.textAlign = 'center';
+          ctx.fillText('رمز الحضور', canvas.width/2, canvas.height/2 - 20);
+          ctx.fillText(currentSessionId, canvas.width/2, canvas.height/2 + 10);
+          ctx.font = '12px Cairo';
+          ctx.fillText('يرجى تحديث الصفحة', canvas.width/2, canvas.height/2 + 40);
+          
+        } catch (fallbackError) {
+          console.error("Fallback also failed:", fallbackError);
+        }
+        
+        throw new Error("فشل في إنشاء رمز الاستجابة السريعة");
       }
     }
 
@@ -550,9 +617,14 @@
               const data = doc.data();
               const item = document.createElement("div");
               item.className = "attendance-item";
+              
+              const time = data.time && data.time.seconds 
+                ? new Date(data.time.seconds * 1000).toLocaleTimeString()
+                : 'وقت غير معروف';
+                
               item.innerHTML = `
-                <span class="student-name">${data.studentName}</span>
-                <span class="attendance-time">${new Date(data.time.seconds * 1000).toLocaleTimeString()}</span>
+                <span class="student-name">${data.studentName || 'طالب غير معروف'}</span>
+                <span class="attendance-time">${time}</span>
               `;
               listDiv.appendChild(item);
             });
@@ -560,6 +632,7 @@
           document.getElementById("attendanceCount").textContent = snapshot.size;
         }, error => {
           console.error("Error listening to attendance:", error);
+          listDiv.innerHTML = '<div class="empty-state">خطأ في تحميل قائمة الحضور</div>';
         });
     }
 
@@ -567,18 +640,30 @@
     async function endSession() {
       if (!currentSessionId) return;
       
+      // عرض حالة التحميل
+      document.getElementById("endBtnText").style.display = "none";
+      document.getElementById("endBtnLoading").style.display = "inline-block";
+      document.getElementById("endBtn").disabled = true;
+      
       try {
         await db.collection("sessionsSchedule").doc(currentSessionId).update({
           currentToken: null,
           ended: true
         });
+        
         alert("✅ تم إنهاء الحصة. لا يمكن تسجيل حضور جديد.");
         clearQRCode();
         document.getElementById("endBtn").style.display = "none";
         document.getElementById("qrSection").style.display = "none";
+        
       } catch (error) {
         console.error("Error ending session:", error);
-        alert("حدث خطأ في إنهاء الحصة. يرجى المحاولة مرة أخرى.");
+        alert("حدث خطأ في إنهاء الحصة: " + error.message);
+      } finally {
+        // إعادة عرض الزر لحالته الطبيعية
+        document.getElementById("endBtnText").style.display = "inline";
+        document.getElementById("endBtnLoading").style.display = "none";
+        document.getElementById("endBtn").disabled = false;
       }
     }
 
@@ -592,10 +677,26 @@
         clearInterval(timerInterval);
         timerInterval = null;
       }
+      
+      // تنظيف Canvas
+      const canvas = document.getElementById("qrCode");
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
       document.getElementById("qrSection").style.display = "none";
       document.getElementById("attendanceCount").textContent = 0;
       document.getElementById("attendanceList").innerHTML = '<div class="empty-state">لم يسجل أي طالب حضوراً بعد</div>';
     }
+
+    // التحقق من اتصال الإنترنت
+    window.addEventListener('online', function() {
+      console.log("Internet connection restored");
+    });
+
+    window.addEventListener('offline', function() {
+      console.log("Internet connection lost");
+      alert("تم فقدان الاتصال بالإنترنت. قد لا تعمل بعض الميزات.");
+    });
   </script>
 </body>
 </html>
