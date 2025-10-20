@@ -166,7 +166,7 @@
       const token = generateToken();
       const canvas = document.getElementById("qrCanvas");
       canvas.style.display = "block";
-      const qrData = `https://your-site.com/attendance.html?session=${currentSessionId}&token=${token}`;
+      const qrData = `https://admino6.netlify.app/attendance.html?session=${currentSessionId}&token=${token}`;
       await QRCode.toCanvas(canvas, qrData, { width: 220 });
 
       await db.collection("sessionsSchedule").doc(currentSessionId).update({
