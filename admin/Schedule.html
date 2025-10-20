@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>جدول الحصص المتطور</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <style>
+    body { font-family: Arial; background: #f0f0f0; padding: 20px; }
+    .form-container { background: #fff; padding: 20px; border-radius: 8px; max-width: 450px; margin: auto; }
+    input, select, button { width: 100%; padding: 8px; margin: 6px 0; border-radius: 4px; border: 1px solid #ccc; }
+    button { cursor: pointer; }
+    .btn-add { background: #007bff; color: white; }
+    .btn-add:hover { background: #0056b3; }
+    .btn-edit { background: #ffc107; color: white; }
+    .btn-edit:hover { background: #e0a800; }
+    .btn-delete { background: #dc3545; color: white; }
+    .btn-delete:hover { background: #c82333; }
+    ul { max-width: 600px; margin: 20px auto; padding: 0; list-style: none; }
+    li { background: #fff; margin-bottom: 6px; padding: 10px; border-radius: 4px; border: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
+    .actions button { margin-left: 5px; }
+  </style>
+</head>
+<body>
+
+  <div class="form-container">
+    <h2>إدارة جدول الحصص</h2>
+    <input type="text" id="teacherName" placeholder="اسم المدرس">
+    <input type="text" id="subject" placeholder="المادة">
+    <input type="text" id="className" placeholder="الصف / الشعبة">
+    <select id="day">
+      <option>الأحد</option>
+      <option>الإثنين</option>
+      <option>الثلاثاء</option>
+      <option>الأربعاء</option>
+      <option>الخميس</option>
+    </select>
+    <input type="time" id="startTime">
+    <input type="time" id="endTime">
+    <button class="btn-add" onclick="addOrUpdateSchedule()">إضافة الحصة</button>
+  </div>
+
+  <h3 style="text-align:center;">الحصص الحالية</h3>
+  <ul id="scheduleList"></ul>
+
+  <script>
+    // 👇 إعداد Firebase
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let editId = null; // لتخزين id الحصة عند التعديل
+
+    // إضافة / تعديل حصة
+    function addOrUpdateSchedule() {
+      const teacherName = document.getElementById("teacherName").value.trim();
+      const subject = document.getElementById("subject").value.trim();
+      const className = document.getElementById("className").value.trim();
+      const day = document.getElementById("day").value;
+      const startTime = document.getElementById("startTime").value;
+      const endTime = document.getElementById("endTime").value;
+
+      if (!teacherName || !subject || !className || !startTime || !endTime) {
+        return alert("اكمل جميع البيانات");
+      }
+
+      const data = { teacherName, subject, className, day, startTime, endTime, createdAt: new Date() };
+
+      if (editId) {
+        // تعديل
+        db.collection("sessionsSchedule").doc(editId).set(data)
+          .then(() => {
+            alert("✅ تم تعديل الحصة!");
+            editId = null;
+            clearForm();
+            fetchSchedules();
+          })
+          .catch(err => alert("❌ خطأ: " + err));
+      } else {
+        // إضافة جديدة
+        db.collection("sessionsSchedule").add(data)
+          .then(() => {
+            alert("✅ تم إضافة الحصة!");
+            clearForm();
+            fetchSchedules();
+          })
+          .catch(err => alert("❌ خطأ: " + err));
+      }
+    }
+
+    function clearForm() {
+      document.getElementById("teacherName").value = "";
+      document.getElementById("subject").value = "";
+      document.getElementById("className").value = "";
+      document.getElementById("startTime").value = "";
+      document.getElementById("endTime").value = "";
+      document.querySelector(".btn-add").textContent = "إضافة الحصة";
+    }
+
+    // جلب الحصص وعرضها
+    function fetchSchedules() {
+      const list = document.getElementById("scheduleList");
+      list.innerHTML = "";
+      db.collection("sessionsSchedule").orderBy("createdAt").get().then((snapshot) => {
+        snapshot.forEach(doc => {
+          const s = doc.data();
+          const li = document.createElement("li");
+
+          li.innerHTML = `
+            <span>${s.subject} - ${s.className} - ${s.day} (${s.startTime} - ${s.endTime}) - المدرس: ${s.teacherName}</span>
+            <span class="actions">
+              <button class="btn-edit" onclick="editSchedule('${doc.id}')">تعديل</button>
+              <button class="btn-delete" onclick="deleteSchedule('${doc.id}')">حذف</button>
+            </span>
+          `;
+          list.appendChild(li);
+        });
+      });
+    }
+
+    // حذف الحصة
+    function deleteSchedule(id) {
+      if (!confirm("هل تريد حذف هذه الحصة؟")) return;
+      db.collection("sessionsSchedule").doc(id).delete()
+        .then(() => fetchSchedules())
+        .catch(err => alert("❌ خطأ: " + err));
+    }
+
+    // تعديل الحصة
+    function editSchedule(id) {
+      db.collection("sessionsSchedule").doc(id).get().then(doc => {
+        const s = doc.data();
+        document.getElementById("teacherName").value = s.teacherName;
+        document.getElementById("subject").value = s.subject;
+        document.getElementById("className").value = s.className;
+        document.getElementById("day").value = s.day;
+        document.getElementById("startTime").value = s.startTime;
+        document.getElementById("endTime").value = s.endTime;
+        editId = id;
+        document.querySelector(".btn-add").textContent = "حفظ التعديل";
+      });
+    }
+
+    fetchSchedules();
+  </script>
+
+</body>
+</html>
