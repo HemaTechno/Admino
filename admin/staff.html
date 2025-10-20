@@ -49,15 +49,15 @@
 <script>
   // ===== Firebase Config =====
   const firebaseConfig = {
-  apiKey: "AIzaSyBoPJbx5v6EkOqxOJkbhzHqIJdAByh79Rg",
-  authDomain: "hhhhhh-d4fb8.firebaseapp.com",
-  databaseURL: "https://hhhhhh-d4fb8-default-rtdb.firebaseio.com",
-  projectId: "hhhhhh-d4fb8",
-  storageBucket: "hhhhhh-d4fb8.appspot.com",
-  messagingSenderId: "24512338206",
-  appId: "1:24512338206:web:dfe045db59bd3434a2110f",
-  measurementId: "G-HD4R7GNQ5H"
-};
+    apiKey: "AIzaSyBoPJbx5v6EkOqxOJkbhzHqIJdAByh79Rg",
+    authDomain: "hhhhhh-d4fb8.firebaseapp.com",
+    databaseURL: "https://hhhhhh-d4fb8-default-rtdb.firebaseio.com",
+    projectId: "hhhhhh-d4fb8",
+    storageBucket: "hhhhhh-d4fb8.appspot.com",
+    messagingSenderId: "24512338206",
+    appId: "1:24512338206:web:dfe045db59bd3434a2110f",
+    measurementId: "G-HD4R7GNQ5H"
+  };
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
@@ -104,7 +104,7 @@
   // ===== Load Today's sessions =====
   async function loadTodaySessions() {
     const todayStr = getTodayDateString();
-    const snapshot = await db.collection("sessions")
+    const snapshot = await db.collection("sessionsSchedule") // <-- تعديل الكولكشن هنا
                              .where("staffEmail", "==", currentUser.email)
                              .where("date", "==", todayStr)
                              .get();
@@ -154,12 +154,12 @@
   async function updateQRCode() {
     if (!currentSessionId) return;
     const token = generateToken();
-    const qrData = `https://your-school.com/attendance?session=${currentSessionId}&token=${token}`;
+    const qrData = `https://admino6.netlify.app/attendance?session=${currentSessionId}&token=${token}`;
     const qrDiv = document.getElementById("qrCode");
     qrDiv.innerHTML = "";
     QRCode.toCanvas(qrDiv, qrData, { width:200 });
     // سجل التوكن في الجلسة (للتحقق عند الطلاب)
-    await db.collection("sessions").doc(currentSessionId).update({ currentToken: token });
+    await db.collection("sessionsSchedule").doc(currentSessionId).update({ currentToken: token });
   }
 
   function generateToken(length = 8) {
@@ -173,7 +173,7 @@
   function listenAttendance() {
     if (!currentSessionId) return;
     const listDiv = document.getElementById("attendanceList");
-    db.collection("sessions").doc(currentSessionId)
+    db.collection("sessionsSchedule").doc(currentSessionId)
       .collection("attendance")
       .orderBy("time", "asc")
       .onSnapshot(snapshot => {
@@ -192,13 +192,14 @@
   // ===== End Session =====
   async function endSession() {
     if(!currentSessionId) return;
-    await db.collection("sessions").doc(currentSessionId).update({ currentToken: null, ended:true });
+    await db.collection("sessionsSchedule").doc(currentSessionId).update({ currentToken: null, ended:true });
     alert("تم إنهاء الحصة بنجاح، لا يمكن للطلاب تسجيل الحضور الآن.");
     clearQRCode();
   }
 </script>
 
-<p style="text-align:center; margin-top:18px;">https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw</p>
+<p style="text-align:center; margin-top:18px;">https://youtube.com/@hema_tech1?si=Vz2E7GNQ5H</p>
 </body>
 </html>
+
 
