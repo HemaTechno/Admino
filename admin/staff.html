@@ -2,57 +2,55 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>📋 نظام الغياب - لوحة المدرس</title>
+  <title>نظام الغياب - لوحة المدرس</title>
 
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-  <!-- QR Generator -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
   <style>
     body {
       font-family: "Cairo", sans-serif;
-      background: #f3f4f6;
-      padding: 20px;
+      background:#f3f4f6;
+      padding:20px;
       direction: rtl;
       text-align: center;
     }
     .card {
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      margin: auto;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-      max-width: 600px;
+      background:#fff;
+      padding:20px;
+      border-radius:12px;
+      margin:auto;
+      box-shadow:0 3px 10px rgba(0,0,0,0.1);
+      max-width:600px;
     }
     select, button {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 16px;
+      width:100%;
+      padding:10px;
+      margin:8px 0;
+      border-radius:8px;
+      border:1px solid #ccc;
+      font-size:16px;
     }
     button {
-      cursor: pointer;
-      background: #2563eb;
-      color: white;
-      border: none;
+      cursor:pointer;
+      background:#2563eb;
+      color:white;
+      border:none;
+      font-weight:bold;
     }
-    button:hover { background: #1d4ed8; }
-    #qrCode { margin: 20px 0; }
+    button:hover { background:#1d4ed8; }
+    #qrCode { margin:20px 0; }
     .attendance-item {
-      border-bottom: 1px solid #eee;
-      padding: 6px;
-      text-align: right;
+      border-bottom:1px solid #eee;
+      padding:6px;
+      text-align:right;
     }
   </style>
 </head>
 <body>
 
-  <h2>📘 نظام الغياب - لوحة المدرس</h2>
+  <h2>📋 نظام الغياب - لوحة المدرس</h2>
 
   <div class="card">
     <label>🗓 اختر اليوم:</label>
@@ -67,10 +65,11 @@
     </select>
 
     <label>📚 اختر الحصة:</label>
-    <select id="sessionSelect" onchange="selectSession()">
+    <select id="sessionSelect">
       <option value="">-- اختر الحصة --</option>
     </select>
 
+    <button id="startBtn" onclick="startSession()" style="display:none;">📸 بدء أخذ الغياب</button>
     <div id="qrCode"></div>
     <button id="endBtn" onclick="endSession()" style="display:none;background:#ef4444;">إنهاء الحصة</button>
 
@@ -108,6 +107,7 @@
       const day = document.getElementById("daySelect").value;
       const select = document.getElementById("sessionSelect");
       select.innerHTML = '<option value="">-- اختر الحصة --</option>';
+      document.getElementById("startBtn").style.display = "none";
 
       if (!day) return;
 
@@ -117,7 +117,7 @@
 
       if (snapshot.empty) {
         const opt = document.createElement("option");
-        opt.textContent = "❌ لا توجد حصص في هذا اليوم";
+        opt.textContent = "لا توجد حصص في هذا اليوم";
         opt.disabled = true;
         select.appendChild(opt);
         return;
@@ -130,19 +130,26 @@
         opt.textContent = `${data.subject || "مادة"} - ${data.class || "صف"} (${data.teacher || "مدرس مجهول"})`;
         select.appendChild(opt);
       });
+
+      select.onchange = function() {
+        if (select.value) {
+          document.getElementById("startBtn").style.display = "block";
+        } else {
+          document.getElementById("startBtn").style.display = "none";
+        }
+      };
     }
 
-    // عند اختيار حصة
-    function selectSession() {
+    // بدء الحصة وإظهار QR
+    function startSession() {
       const id = document.getElementById("sessionSelect").value;
-      if (!id) {
-        clearQRCode();
-        return;
-      }
+      if (!id) return alert("من فضلك اختر حصة أولاً");
       currentSessionId = id;
+
       startQRCode();
       listenAttendance();
       document.getElementById("endBtn").style.display = "block";
+      document.getElementById("startBtn").style.display = "none";
     }
 
     // توليد QR كل 60 ثانية
@@ -158,15 +165,13 @@
       const qrDiv = document.getElementById("qrCode");
       qrDiv.innerHTML = "";
 
-      // الرابط اللي الطالب هيمسحه
-      const qrData = `https://your-domain.com/attendance.html?session=${currentSessionId}&token=${token}`;
-      QRCode.toCanvas(qrDiv, qrData, { width: 200 });
+      const qrData = `https://admino6.netlify.app/attendance.html?session=${currentSessionId}&token=${token}`;
+      QRCode.toCanvas(qrDiv, qrData, { width: 220 });
 
-      // حفظ التوكن في الداتابيس عشان الطالب يتأكد إنه صالح
       await db.collection("sessionsSchedule").doc(currentSessionId).update({
         currentToken: token,
-        lastUpdated: new Date(),
-        ended: false
+        ended: false,
+        lastUpdated: new Date()
       });
     }
 
@@ -220,6 +225,7 @@
   </script>
 </body>
 </html>
+
 
 
 
