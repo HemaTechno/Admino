@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>تسجيل الحضور - الطلاب</title>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body { font-family: Arial; background:#f3f4f6; padding:20px; }
+    .card { background:#fff; padding:20px; border-radius:8px; margin-bottom:20px; max-width:700px; margin:auto; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+    input, button { width:100%; padding:10px; margin:6px 0; border-radius:6px; border:1px solid #ccc; box-sizing:border-box; }
+    button { cursor:pointer; background:#059669; color:#fff; border:none; }
+    button:hover { background:#047857; }
+    #sessionInfo { margin-top:10px; padding:10px; border:1px solid #ddd; border-radius:6px; }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="loginCard">
+    <h2>تسجيل دخول الطالب</h2>
+    <input type="number" id="studentId" placeholder="Student ID">
+    <input type="text" id="password" placeholder="كلمة المرور">
+    <button onclick="loginStudent()">تسجيل الدخول</button>
+    <p id="loginError" style="color:red;"></p>
+  </div>
+
+  <div class="card" id="sessionCard" style="display:none;">
+    <h2>تفاصيل الحصة</h2>
+    <div id="sessionInfo"></div>
+    <button onclick="markAttendance()">تسجيل الحضور</button>
+    <p id="attendanceMessage" style="color:green; font-weight:bold;"></p>
+  </div>
+
+<script>
+  // ===== Firebase Config =====
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  let currentStudent = null;
+  let currentSession = null;
+  let scannedToken = null;
+  let sessionId = null;
+
+  // ===== Get session and token from URL =====
+  const urlParams = new URLSearchParams(window.location.search);
+  sessionId = urlParams.get("session");
+  scannedToken = urlParams.get("token");
+
+  if(!sessionId || !scannedToken){
+    alert("QR غير صالح أو الرابط ناقص.");
+  }
+
+  // ===== Student Login =====
+  async function loginStudent() {
+    const studentId = Number(document.getElementById("studentId").value.trim());
+    const password = document.getElementById("password").value.trim();
+    if(!studentId || !password) return alert("اكمل البيانات");
+
+    const snapshot = await db.collection("students")
+                             .where("studentId","==",studentId)
+                             .where("password","==",password)
+                             .get();
+    if(snapshot.empty) {
+      document.getElementById("loginError").textContent = "Student ID أو كلمة المرور غير صحيحة";
+      return;
+    }
+
+    currentStudent = snapshot.docs[0].data();
+    currentStudent.docId = snapshot.docs[0].id;
+    document.getElementById("loginCard").style.display = "none";
+    loadSession();
+  }
+
+  // ===== Load Session Data =====
+  async function loadSession() {
+    const sessionDoc = await db.collection("sessions").doc(sessionId).get();
+    if(!sessionDoc.exists){
+      alert("الحصة غير موجودة");
+      return;
+    }
+    const sessionData = sessionDoc.data();
+    if(sessionData.currentToken !== scannedToken){
+      alert("الكود انتهت صلاحيته");
+      return;
+    }
+    currentSession = { id: sessionDoc.id, ...sessionData };
+    renderSessionInfo();
+  }
+
+  // ===== Render Session Info =====
+  function renderSessionInfo() {
+    document.getElementById("sessionCard").style.display = "block";
+    document.getElementById("sessionInfo").innerHTML = `
+      <p><strong>المادة:</strong> ${escapeHtml(currentSession.subject)}</p>
+      <p><strong>الصف:</strong> ${escapeHtml(currentSession.class)}</p>
+      <p><strong>المدرس:</strong> ${escapeHtml(currentSession.staffName)}</p>
+      <p><strong>وقت الحصة:</strong> ${escapeHtml(currentSession.time)}</p>
+    `;
+  }
+
+  // ===== Mark Attendance =====
+  async function markAttendance() {
+    if(!currentStudent || !currentSession || !scannedToken) return;
+
+    try {
+      const attendanceRef = db.collection("sessions")
+                              .doc(currentSession.id)
+                              .collection("attendance")
+                              .doc(currentStudent.docId);
+
+      const doc = await attendanceRef.get();
+      if(doc.exists) {
+        document.getElementById("attendanceMessage").textContent = "تم تسجيل الحضور مسبقاً";
+        return;
+      }
+
+      await attendanceRef.set({
+        studentName: currentStudent.name,
+        studentId: currentStudent.studentId,
+        time: firebase.firestore.Timestamp.now()
+      });
+      document.getElementById("attendanceMessage").textContent = "✅ تم تسجيل الحضور بنجاح!";
+    } catch(err) {
+      alert("حدث خطأ أثناء تسجيل الحضور: " + err);
+    }
+  }
+
+  // ===== Helper =====
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+</script>
+
+<p style="text-align:center; margin-top:18px;">https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw</p>
+</body>
+</html>
