@@ -9,81 +9,357 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
   <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --secondary: #7c3aed;
+      --danger: #ef4444;
+      --success: #10b981;
+      --light: #f8fafc;
+      --dark: #1e293b;
+      --gray: #64748b;
+      --border-radius: 16px;
+      --shadow: 0 10px 25px rgba(0,0,0,0.1);
+      --transition: all 0.3s ease;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
     body {
-      font-family: "Cairo", sans-serif;
-      background:#f3f4f6;
-      padding:20px;
+      font-family: "Cairo", "Tajawal", sans-serif;
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      min-height: 100vh;
+      padding: 20px;
       direction: rtl;
       text-align: center;
+      color: var(--dark);
     }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      color: var(--primary);
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .subtitle {
+      font-size: 1.1rem;
+      color: var(--gray);
+      margin-bottom: 20px;
+    }
+    
     .card {
-      background:#fff;
-      padding:20px;
-      border-radius:12px;
-      margin:auto;
-      box-shadow:0 3px 10px rgba(0,0,0,0.1);
-      max-width:600px;
+      background: #fff;
+      padding: 30px;
+      border-radius: var(--border-radius);
+      margin: 20px auto;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
     }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+      text-align: right;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--dark);
+      font-size: 1.1rem;
+    }
+    
     select, button {
-      width:100%;
-      padding:10px;
-      margin:8px 0;
-      border-radius:8px;
-      border:1px solid #ccc;
-      font-size:16px;
+      width: 100%;
+      padding: 14px;
+      margin: 8px 0;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+      font-size: 16px;
+      font-family: inherit;
+      transition: var(--transition);
     }
+    
+    select {
+      background-color: var(--light);
+      cursor: pointer;
+    }
+    
+    select:focus {
+      border-color: var(--primary);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+    
     button {
-      cursor:pointer;
-      background:#2563eb;
-      color:white;
-      border:none;
-      font-weight:bold;
+      cursor: pointer;
+      background: var(--primary);
+      color: white;
+      border: none;
+      font-weight: bold;
+      font-size: 1.1rem;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
     }
-    button:hover { background:#1d4ed8; }
-    #qrCanvas { margin:20px 0; }
+    
+    button:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    #endBtn {
+      background: var(--danger);
+    }
+    
+    #endBtn:hover {
+      background: #dc2626;
+      box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+    }
+    
+    .qr-section {
+      margin: 30px 0;
+      padding: 20px;
+      background: var(--light);
+      border-radius: var(--border-radius);
+      display: none;
+    }
+    
+    .qr-container {
+      position: relative;
+      display: inline-block;
+      margin: 20px auto;
+    }
+    
+    #qrCanvas {
+      border: 15px solid white;
+      border-radius: 16px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      background: white;
+    }
+    
+    .qr-timer {
+      position: absolute;
+      top: -15px;
+      right: -15px;
+      background: var(--secondary);
+      color: white;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      box-shadow: 0 5px 15px rgba(124, 58, 237, 0.3);
+      z-index: 10;
+    }
+    
+    .attendance-section {
+      margin-top: 30px;
+      text-align: right;
+    }
+    
+    .attendance-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .attendance-count {
+      background: var(--success);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+    
+    .attendance-list {
+      max-height: 300px;
+      overflow-y: auto;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+      padding: 10px;
+    }
+    
     .attendance-item {
-      border-bottom:1px solid #eee;
-      padding:6px;
-      text-align:right;
+      padding: 12px 15px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: var(--transition);
+    }
+    
+    .attendance-item:hover {
+      background: #f8fafc;
+    }
+    
+    .attendance-item:last-child {
+      border-bottom: none;
+    }
+    
+    .student-name {
+      font-weight: 600;
+    }
+    
+    .attendance-time {
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+    
+    .empty-state {
+      padding: 30px;
+      color: var(--gray);
+      text-align: center;
+    }
+    
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+    
+    .footer-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+    
+    .footer-link:hover {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
+    
+    /* تحسينات للشاشات الصغيرة */
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+      
+      .card {
+        padding: 20px;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+      
+      #qrCanvas {
+        width: 280px !important;
+        height: 280px !important;
+      }
+      
+      .qr-timer {
+        width: 50px;
+        height: 50px;
+        font-size: 1rem;
+      }
     }
   </style>
 </head>
 <body>
 
-  <h2>📋 نظام الغياب - لوحة المدرس</h2>
+  <div class="container">
+    <header>
+      <h1>📋 نظام الغياب - لوحة المدرس</h1>
+      <p class="subtitle">أداة متكاملة لإدارة حضور الطلاب باستخدام رمز الاستجابة السريعة</p>
+    </header>
 
-  <div class="card">
-    <label>🗓 اختر اليوم:</label>
-    <select id="daySelect" onchange="loadSessions()">
-      <option value="">-- اختر اليوم --</option>
-      <option value="السبت">السبت</option>
-      <option value="الأحد">الأحد</option>
-      <option value="الإثنين">الإثنين</option>
-      <option value="الثلاثاء">الثلاثاء</option>
-      <option value="الأربعاء">الأربعاء</option>
-      <option value="الخميس">الخميس</option>
-    </select>
+    <div class="card">
+      <div class="form-group">
+        <label>🗓 اختر اليوم:</label>
+        <select id="daySelect" onchange="loadSessions()">
+          <option value="">-- اختر اليوم --</option>
+          <option value="السبت">السبت</option>
+          <option value="الأحد">الأحد</option>
+          <option value="الإثنين">الإثنين</option>
+          <option value="الثلاثاء">الثلاثاء</option>
+          <option value="الأربعاء">الأربعاء</option>
+          <option value="الخميس">الخميس</option>
+        </select>
+      </div>
 
-    <label>📚 اختر الحصة:</label>
-    <select id="sessionSelect">
-      <option value="">-- اختر الحصة --</option>
-    </select>
+      <div class="form-group">
+        <label>📚 اختر الحصة:</label>
+        <select id="sessionSelect">
+          <option value="">-- اختر الحصة --</option>
+        </select>
+      </div>
 
-    <button id="startBtn" onclick="startSession()" style="display:none;">📸 بدء أخذ الغياب</button>
-    
-    <canvas id="qrCanvas" style="display:none;"></canvas>
-    
-    <button id="endBtn" onclick="endSession()" style="display:none;background:#ef4444;">إنهاء الحصة</button>
+      <button id="startBtn" onclick="startSession()" style="display:none;">📸 بدء أخذ الغياب</button>
+    </div>
 
-    <h3>👥 عدد الحاضرين: <span id="attendanceCount">0</span></h3>
-    <div id="attendanceList"></div>
+    <div class="qr-section" id="qrSection">
+      <h2>📱 رمز الحضور</h2>
+      <p>اطلب من الطلاب مسح هذا الرمز لتسجيل حضورهم</p>
+      
+      <div class="qr-container">
+        <div class="qr-timer" id="qrTimer">60</div>
+        <canvas id="qrCanvas"></canvas>
+      </div>
+      
+      <button id="endBtn" onclick="endSession()" style="display:none; margin-top: 20px;">إنهاء الحصة</button>
+    </div>
+
+    <div class="card attendance-section">
+      <div class="attendance-header">
+        <h2>👥 قائمة الحضور</h2>
+        <div class="attendance-count">عدد الحاضرين: <span id="attendanceCount">0</span></div>
+      </div>
+      
+      <div class="attendance-list" id="attendanceList">
+        <div class="empty-state">لم يسجل أي طالب حضوراً بعد</div>
+      </div>
+    </div>
+
+    <footer>
+      <p>تم التطوير بواسطة 
+        <a href="https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw" target="_blank" class="footer-link">
+          قناة Hema Tech
+        </a>
+      </p>
+    </footer>
   </div>
-
-  <p style="margin-top:20px;">
-    <a href="https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw" target="_blank">
-      قناة Hema Tech
-    </a>
-  </p>
 
   <script>
     // إعداد Firebase
@@ -102,6 +378,8 @@
 
     let currentSessionId = null;
     let qrInterval = null;
+    let timerInterval = null;
+    let timeLeft = 60;
 
     // تحميل الحصص حسب اليوم
     async function loadSessions() {
@@ -148,26 +426,56 @@
       if (!id) return alert("من فضلك اختر حصة أولاً");
       currentSessionId = id;
 
+      document.getElementById("qrSection").style.display = "block";
       startQRCode();
       listenAttendance();
       document.getElementById("endBtn").style.display = "block";
       document.getElementById("startBtn").style.display = "none";
     }
 
-    // توليد QR كل 60 ثانية
+    // توليد QR مع عداد الوقت
     function startQRCode() {
       clearQRCode();
       updateQRCode();
-      qrInterval = setInterval(updateQRCode, 60000);
+      startTimer();
+      qrInterval = setInterval(function() {
+        updateQRCode();
+        startTimer();
+      }, 60000);
+    }
+
+    // بدء عداد الوقت
+    function startTimer() {
+      timeLeft = 60;
+      document.getElementById("qrTimer").textContent = timeLeft;
+      
+      if (timerInterval) clearInterval(timerInterval);
+      
+      timerInterval = setInterval(function() {
+        timeLeft--;
+        document.getElementById("qrTimer").textContent = timeLeft;
+        
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+        }
+      }, 1000);
     }
 
     async function updateQRCode() {
       if (!currentSessionId) return;
       const token = generateToken();
       const canvas = document.getElementById("qrCanvas");
-      canvas.style.display = "block";
       const qrData = `https://admino6.netlify.app/attendance.html?session=${currentSessionId}&token=${token}`;
-      await QRCode.toCanvas(canvas, qrData, { width: 220 });
+      
+      // جعل QR كبير وواضح
+      await QRCode.toCanvas(canvas, qrData, { 
+        width: 350,
+        margin: 2,
+        color: {
+          dark: '#1e293b',
+          light: '#ffffff'
+        }
+      });
 
       await db.collection("sessionsSchedule").doc(currentSessionId).update({
         currentToken: token,
@@ -192,14 +500,21 @@
         .collection("attendance")
         .orderBy("time", "asc")
         .onSnapshot(snapshot => {
-          listDiv.innerHTML = "";
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            const item = document.createElement("div");
-            item.className = "attendance-item";
-            item.textContent = `${data.studentName} - ${new Date(data.time.seconds * 1000).toLocaleTimeString()}`;
-            listDiv.appendChild(item);
-          });
+          if (snapshot.empty) {
+            listDiv.innerHTML = '<div class="empty-state">لم يسجل أي طالب حضوراً بعد</div>';
+          } else {
+            listDiv.innerHTML = "";
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              const item = document.createElement("div");
+              item.className = "attendance-item";
+              item.innerHTML = `
+                <span class="student-name">${data.studentName}</span>
+                <span class="attendance-time">${new Date(data.time.seconds * 1000).toLocaleTimeString()}</span>
+              `;
+              listDiv.appendChild(item);
+            });
+          }
           document.getElementById("attendanceCount").textContent = snapshot.size;
         });
     }
@@ -214,14 +529,16 @@
       alert("✅ تم إنهاء الحصة. لا يمكن تسجيل حضور جديد.");
       clearQRCode();
       document.getElementById("endBtn").style.display = "none";
+      document.getElementById("qrSection").style.display = "none";
     }
 
     // تنظيف الـ QR
     function clearQRCode() {
       if (qrInterval) clearInterval(qrInterval);
-      document.getElementById("qrCanvas").style.display = "none";
+      if (timerInterval) clearInterval(timerInterval);
+      document.getElementById("qrSection").style.display = "none";
       document.getElementById("attendanceCount").textContent = 0;
-      document.getElementById("attendanceList").innerHTML = "";
+      document.getElementById("attendanceList").innerHTML = '<div class="empty-state">لم يسجل أي طالب حضوراً بعد</div>';
     }
   </script>
 </body>
