@@ -1,401 +1,96 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>نظام الغياب - لوحة المدرس</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة المعلم - نظام الغياب</title>
 
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <!-- QR -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
   <style>
-    :root {
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
-      --secondary: #7c3aed;
-      --danger: #ef4444;
-      --success: #10b981;
-      --light: #f8fafc;
-      --dark: #1e293b;
-      --gray: #64748b;
-      --border-radius: 16px;
-      --shadow: 0 10px 25px rgba(0,0,0,0.1);
-      --transition: all 0.3s ease;
-    }
-    
-    * {
+    body {
+      font-family: "Cairo", sans-serif;
+      background: #f8fafc;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: "Cairo", "Tajawal", sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      padding: 20px;
-      direction: rtl;
       text-align: center;
-      color: var(--dark);
+      color: #333;
     }
-    
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    
     header {
-      margin-bottom: 30px;
-      text-align: center;
+      background: #2563eb;
       color: white;
+      padding: 20px;
+      font-size: 1.5em;
+      font-weight: bold;
+      border-radius: 0 0 20px 20px;
     }
-    
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 10px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    .content {
+      margin-top: 30px;
     }
-    
-    .subtitle {
-      font-size: 1.1rem;
-      opacity: 0.9;
-      margin-bottom: 20px;
-    }
-    
-    .card {
-      background: #fff;
-      padding: 30px;
-      border-radius: var(--border-radius);
-      margin: 20px auto;
-      box-shadow: var(--shadow);
-      transition: var(--transition);
-    }
-    
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 30px rgba(0,0,0,0.15);
-    }
-    
-    .form-group {
-      margin-bottom: 20px;
-      text-align: right;
-    }
-    
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: var(--dark);
-      font-size: 1.1rem;
-    }
-    
     select, button {
-      width: 100%;
-      padding: 14px;
-      margin: 8px 0;
-      border-radius: 12px;
-      border: 2px solid #e2e8f0;
-      font-size: 16px;
-      font-family: inherit;
-      transition: var(--transition);
-    }
-    
-    select {
-      background-color: var(--light);
+      font-size: 1em;
+      padding: 10px 15px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      margin: 10px;
       cursor: pointer;
     }
-    
-    select:focus {
-      border-color: var(--primary);
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-    }
-    
     button {
-      cursor: pointer;
-      background: var(--primary);
+      background: #2563eb;
       color: white;
       border: none;
-      font-weight: bold;
-      font-size: 1.1rem;
-      letter-spacing: 0.5px;
-      position: relative;
-      overflow: hidden;
+      transition: 0.3s;
     }
-    
     button:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+      background: #1d4ed8;
     }
-    
-    button:active {
-      transform: translateY(0);
-    }
-    
-    button:disabled {
-      background: #94a3b8;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-    
-    #endBtn {
-      background: var(--danger);
-    }
-    
-    #endBtn:hover {
-      background: #dc2626;
-      box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
-    }
-    
-    .qr-section {
-      margin: 30px 0;
-      padding: 30px;
-      background: var(--light);
-      border-radius: var(--border-radius);
-      display: none;
-      border: 1px solid #e2e8f0;
-    }
-    
-    .qr-container {
-      position: relative;
-      display: inline-block;
+    #qr {
       margin: 20px auto;
-      padding: 20px;
+      display: none;
       background: white;
-      border-radius: 16px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      padding: 15px;
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: fit-content;
     }
-    
-    #qrCode {
-      display: block;
-      margin: 0 auto;
-      border: 10px solid white;
-      border-radius: 8px;
-      background: white;
-    }
-    
-    .qr-timer {
-      position: absolute;
-      top: -15px;
-      right: -15px;
-      background: var(--secondary);
-      color: white;
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    #countdown {
       font-weight: bold;
-      font-size: 1.2rem;
-      box-shadow: 0 5px 15px rgba(124, 58, 237, 0.3);
-      z-index: 10;
-    }
-    
-    .qr-info {
-      margin-top: 15px;
-      color: var(--gray);
-      font-size: 0.9rem;
-    }
-    
-    .attendance-section {
-      margin-top: 30px;
-      text-align: right;
-    }
-    
-    .attendance-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #e2e8f0;
-    }
-    
-    .attendance-count {
-      background: var(--success);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-weight: bold;
-    }
-    
-    .attendance-list {
-      max-height: 300px;
-      overflow-y: auto;
-      border-radius: 12px;
-      border: 2px solid #e2e8f0;
-      padding: 10px;
-    }
-    
-    .attendance-item {
-      padding: 12px 15px;
-      border-bottom: 1px solid #f1f5f9;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: var(--transition);
-    }
-    
-    .attendance-item:hover {
-      background: #f8fafc;
-    }
-    
-    .attendance-item:last-child {
-      border-bottom: none;
-    }
-    
-    .student-name {
-      font-weight: 600;
-    }
-    
-    .attendance-time {
-      color: var(--gray);
-      font-size: 0.9rem;
-    }
-    
-    .empty-state {
-      padding: 30px;
-      color: var(--gray);
-      text-align: center;
-    }
-    
-    .loading {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(255,255,255,.3);
-      border-radius: 50%;
-      border-top-color: #fff;
-      animation: spin 1s ease-in-out infinite;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    footer {
-      margin-top: 40px;
-      text-align: center;
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 0.9rem;
-    }
-    
-    .footer-link {
-      color: white;
-      text-decoration: none;
-      font-weight: 600;
-      transition: var(--transition);
-    }
-    
-    .footer-link:hover {
-      text-decoration: underline;
-    }
-    
-    /* تحسينات للشاشات الصغيرة */
-    @media (max-width: 768px) {
-      .container {
-        padding: 10px;
-      }
-      
-      .card {
-        padding: 20px;
-      }
-      
-      h1 {
-        font-size: 2rem;
-      }
-      
-      .qr-container {
-        padding: 15px;
-      }
-      
-      #qrCode {
-        width: 250px;
-        height: 250px;
-      }
-      
-      .qr-timer {
-        width: 50px;
-        height: 50px;
-        font-size: 1rem;
-      }
+      color: #2563eb;
     }
   </style>
 </head>
 <body>
+  <header>📘 لوحة المعلم - نظام الغياب</header>
 
-  <div class="container">
-    <header>
-      <h1>📋 نظام الغياب - لوحة المدرس</h1>
-      <p class="subtitle">أداة متكاملة لإدارة حضور الطلاب باستخدام رمز الاستجابة السريعة</p>
-    </header>
+  <div class="content">
+    <h2>اختر اليوم والحصة</h2>
 
-    <div class="card">
-      <div class="form-group">
-        <label>🗓 اختر اليوم:</label>
-        <select id="daySelect" onchange="loadSessions()">
-          <option value="">-- اختر اليوم --</option>
-          <option value="السبت">السبت</option>
-          <option value="الأحد">الأحد</option>
-          <option value="الإثنين">الإثنين</option>
-          <option value="الثلاثاء">الثلاثاء</option>
-          <option value="الأربعاء">الأربعاء</option>
-          <option value="الخميس">الخميس</option>
-        </select>
-      </div>
+    <select id="daySelect">
+      <option value="">-- اختر اليوم --</option>
+      <option value="الأحد">الأحد</option>
+      <option value="الاثنين">الاثنين</option>
+      <option value="الثلاثاء">الثلاثاء</option>
+      <option value="الأربعاء">الأربعاء</option>
+      <option value="الخميس">الخميس</option>
+    </select>
 
-      <div class="form-group">
-        <label>📚 اختر الحصة:</label>
-        <select id="sessionSelect">
-          <option value="">-- اختر الحصة --</option>
-        </select>
-      </div>
+    <select id="sessionSelect">
+      <option value="">-- اختر الحصة --</option>
+    </select>
 
-      <button id="startBtn" onclick="startSession()" style="display:none;">
-        <span id="startBtnText">📸 بدء أخذ الغياب</span>
-        <span id="startBtnLoading" class="loading" style="display:none;"></span>
-      </button>
+    <br />
+    <button id="startAttendance">بدء أخذ الغياب</button>
+
+    <div id="qr">
+      <h3>📱 امسح الـ QR لتسجيل الحضور</h3>
+      <canvas id="qrCanvas"></canvas>
+      <p>⏳ يتم التحديث كل <span id="countdown">60</span> ثانية</p>
     </div>
-
-    <div class="qr-section" id="qrSection">
-      <h2>📱 رمز الحضور</h2>
-      <p>اطلب من الطلاب مسح هذا الرمز لتسجيل حضورهم</p>
-      
-      <div class="qr-container">
-        <div class="qr-timer" id="qrTimer">60</div>
-        <canvas id="qrCode" width="300" height="300"></canvas>
-      </div>
-      
-      <p class="qr-info">سيتم تحديث الرمز تلقائياً كل 60 ثانية</p>
-      
-      <button id="endBtn" onclick="endSession()" style="display:none; margin-top: 20px;">
-        <span id="endBtnText">إنهاء الحصة</span>
-        <span id="endBtnLoading" class="loading" style="display:none;"></span>
-      </button>
-    </div>
-
-    <div class="card attendance-section">
-      <div class="attendance-header">
-        <h2>👥 قائمة الحضور</h2>
-        <div class="attendance-count">عدد الحاضرين: <span id="attendanceCount">0</span></div>
-      </div>
-      
-      <div class="attendance-list" id="attendanceList">
-        <div class="empty-state">لم يسجل أي طالب حضوراً بعد</div>
-      </div>
-    </div>
-
-    <footer>
-      <p>تم التطوير بواسطة 
-        <a href="https://youtube.com/@hema_tech1?si=Vz2E7UjRpTmac6iw" target="_blank" class="footer-link">
-          قناة Hema Tech
-        </a>
-      </p>
-    </footer>
   </div>
 
   <script>
@@ -403,303 +98,86 @@
     const firebaseConfig = {
       apiKey: "AIzaSyBoPJbx5v6EkOqxOJkbhzHqIJdAByh79Rg",
       authDomain: "hhhhhh-d4fb8.firebaseapp.com",
-      databaseURL: "https://hhhhhh-d4fb8-default-rtdb.firebaseio.com",
       projectId: "hhhhhh-d4fb8",
       storageBucket: "hhhhhh-d4fb8.appspot.com",
-      messagingSenderId: "24512338206",
-      appId: "1:24512338206:web:dfe045db59bd3434a2110f",
-      measurementId: "G-HD4R7GNQ5H"
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:abc123"
     };
-    
-    // تهيئة Firebase
-    let db;
-    try {
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
-      console.log("Firebase initialized successfully");
-    } catch (error) {
-      console.error("Error initializing Firebase:", error);
-      alert("حدث خطأ في تهيئة قاعدة البيانات. يرجى تحديث الصفحة.");
-    }
 
-    let currentSessionId = null;
-    let qrInterval = null;
-    let timerInterval = null;
-    let timeLeft = 60;
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const daySelect = document.getElementById("daySelect");
+    const sessionSelect = document.getElementById("sessionSelect");
+    const qrDiv = document.getElementById("qr");
+    const qrCanvas = document.getElementById("qrCanvas");
+    const countdown = document.getElementById("countdown");
+    const startBtn = document.getElementById("startAttendance");
+
+    let timer;
+    let currentSession = "";
 
     // تحميل الحصص حسب اليوم
-    async function loadSessions() {
-      clearQRCode();
-      const day = document.getElementById("daySelect").value;
-      const select = document.getElementById("sessionSelect");
-      select.innerHTML = '<option value="">-- اختر الحصة --</option>';
-      document.getElementById("startBtn").style.display = "none";
-
+    daySelect.addEventListener("change", async () => {
+      const day = daySelect.value;
+      sessionSelect.innerHTML = '<option value="">-- جاري التحميل... --</option>';
       if (!day) return;
 
-      try {
-        const snapshot = await db.collection("sessionsSchedule")
-          .where("day", "==", day)
-          .get();
+      const snapshot = await db.collection("sessionsSchedule")
+        .where("day", "==", day)
+        .get();
 
-        if (snapshot.empty) {
-          const opt = document.createElement("option");
-          opt.textContent = "لا توجد حصص في هذا اليوم";
-          opt.disabled = true;
-          select.appendChild(opt);
-          return;
-        }
+      sessionSelect.innerHTML = '<option value="">-- اختر الحصة --</option>';
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const opt = document.createElement("option");
+        opt.value = data.name;
+        opt.textContent = data.name;
+        sessionSelect.appendChild(opt);
+      });
 
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const opt = document.createElement("option");
-          opt.value = doc.id;
-          opt.textContent = `${data.subject || "مادة"} - ${data.class || "صف"} (${data.teacher || "مدرس مجهول"})`;
-          select.appendChild(opt);
-        });
-
-        select.onchange = function() {
-          if (select.value) {
-            document.getElementById("startBtn").style.display = "block";
-          } else {
-            document.getElementById("startBtn").style.display = "none";
-          }
-        };
-      } catch (error) {
-        console.error("Error loading sessions:", error);
-        alert("حدث خطأ في تحميل الحصص. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.");
+      if (snapshot.empty) {
+        sessionSelect.innerHTML = '<option>لا توجد حصص لهذا اليوم</option>';
       }
+    });
+
+    // توليد QR وتحديثه
+    function updateQRCode() {
+      const code = `${currentSession}-${Date.now()}`;
+      QRCode.toCanvas(qrCanvas, code, { width: 220 }, (err) => {
+        if (err) console.error(err);
+      });
     }
 
-    // بدء الحصة وإظهار QR
-    async function startSession() {
-      const id = document.getElementById("sessionSelect").value;
-      if (!id) return alert("من فضلك اختر حصة أولاً");
-      
-      // عرض حالة التحميل
-      document.getElementById("startBtnText").style.display = "none";
-      document.getElementById("startBtnLoading").style.display = "inline-block";
-      document.getElementById("startBtn").disabled = true;
-      
-      try {
-        currentSessionId = id;
-        
-        // التحقق من اتصال Firebase
-        const sessionDoc = await db.collection("sessionsSchedule").doc(currentSessionId).get();
-        if (!sessionDoc.exists) {
-          throw new Error("الحصة المحددة غير موجودة في قاعدة البيانات");
-        }
-        
-        document.getElementById("qrSection").style.display = "block";
-        await startQRCode();
-        listenAttendance();
-        document.getElementById("endBtn").style.display = "block";
-        document.getElementById("startBtn").style.display = "none";
-        
-      } catch (error) {
-        console.error("Error starting session:", error);
-        alert("حدث خطأ في بدء الحصة: " + error.message);
-      } finally {
-        // إعادة عرض الزر لحالته الطبيعية
-        document.getElementById("startBtnText").style.display = "inline";
-        document.getElementById("startBtnLoading").style.display = "none";
-        document.getElementById("startBtn").disabled = false;
-      }
-    }
-
-    // توليد QR مع عداد الوقت
-    async function startQRCode() {
-      clearQRCode();
-      await updateQRCode();
-      startTimer();
-      qrInterval = setInterval(async function() {
-        await updateQRCode();
-        startTimer();
-      }, 60000);
-    }
-
-    // بدء عداد الوقت
-    function startTimer() {
-      timeLeft = 60;
-      document.getElementById("qrTimer").textContent = timeLeft;
-      
-      if (timerInterval) clearInterval(timerInterval);
-      
-      timerInterval = setInterval(function() {
-        timeLeft--;
-        document.getElementById("qrTimer").textContent = timeLeft;
-        
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
+    function startCountdown() {
+      let seconds = 60;
+      countdown.textContent = seconds;
+      clearInterval(timer);
+      timer = setInterval(() => {
+        seconds--;
+        countdown.textContent = seconds;
+        if (seconds <= 0) {
+          updateQRCode();
+          seconds = 60;
         }
       }, 1000);
     }
 
-    async function updateQRCode() {
-      if (!currentSessionId) return;
-      
-      try {
-        const token = generateToken();
-        const canvas = document.getElementById("qrCode");
-        const qrData = `https://admino6.netlify.app/attendance.html?session=${currentSessionId}&token=${token}`;
-        
-        console.log("Generating QR code for:", qrData);
-        
-        // إنشاء QR Code جديد
-        await QRCode.toCanvas(canvas, qrData, { 
-          width: 280,
-          margin: 2,
-          color: {
-            dark: '#1e293b',
-            light: '#ffffff'
-          },
-          errorCorrectionLevel: 'H'
-        });
-
-        // تحديث قاعدة البيانات
-        await db.collection("sessionsSchedule").doc(currentSessionId).update({
-          currentToken: token,
-          ended: false,
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        console.log("QR Code updated successfully");
-        
-      } catch (error) {
-        console.error("Error generating QR code:", error);
-        
-        // محاولة بديلة في حالة فشل المكتبة
-        try {
-          const canvas = document.getElementById("qrCode");
-          const ctx = canvas.getContext('2d');
-          
-          // رسم رسالة بديلة
-          ctx.fillStyle = '#f8fafc';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          
-          ctx.fillStyle = '#1e293b';
-          ctx.font = '16px Cairo';
-          ctx.textAlign = 'center';
-          ctx.fillText('رمز الحضور', canvas.width/2, canvas.height/2 - 20);
-          ctx.fillText(currentSessionId, canvas.width/2, canvas.height/2 + 10);
-          ctx.font = '12px Cairo';
-          ctx.fillText('يرجى تحديث الصفحة', canvas.width/2, canvas.height/2 + 40);
-          
-        } catch (fallbackError) {
-          console.error("Fallback also failed:", fallbackError);
-        }
-        
-        throw new Error("فشل في إنشاء رمز الاستجابة السريعة");
+    startBtn.addEventListener("click", () => {
+      const selected = sessionSelect.value;
+      if (!selected) {
+        alert("⚠️ من فضلك اختر الحصة أولاً!");
+        return;
       }
-    }
-
-    function generateToken(length = 8) {
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-      let t = "";
-      for (let i = 0; i < length; i++) t += chars.charAt(Math.floor(Math.random() * chars.length));
-      return t;
-    }
-
-    // الاستماع للحضور
-    function listenAttendance() {
-      if (!currentSessionId) return;
-      const listDiv = document.getElementById("attendanceList");
-
-      db.collection("sessionsSchedule").doc(currentSessionId)
-        .collection("attendance")
-        .orderBy("time", "asc")
-        .onSnapshot(snapshot => {
-          if (snapshot.empty) {
-            listDiv.innerHTML = '<div class="empty-state">لم يسجل أي طالب حضوراً بعد</div>';
-          } else {
-            listDiv.innerHTML = "";
-            snapshot.forEach(doc => {
-              const data = doc.data();
-              const item = document.createElement("div");
-              item.className = "attendance-item";
-              
-              const time = data.time && data.time.seconds 
-                ? new Date(data.time.seconds * 1000).toLocaleTimeString()
-                : 'وقت غير معروف';
-                
-              item.innerHTML = `
-                <span class="student-name">${data.studentName || 'طالب غير معروف'}</span>
-                <span class="attendance-time">${time}</span>
-              `;
-              listDiv.appendChild(item);
-            });
-          }
-          document.getElementById("attendanceCount").textContent = snapshot.size;
-        }, error => {
-          console.error("Error listening to attendance:", error);
-          listDiv.innerHTML = '<div class="empty-state">خطأ في تحميل قائمة الحضور</div>';
-        });
-    }
-
-    // إنهاء الحصة
-    async function endSession() {
-      if (!currentSessionId) return;
-      
-      // عرض حالة التحميل
-      document.getElementById("endBtnText").style.display = "none";
-      document.getElementById("endBtnLoading").style.display = "inline-block";
-      document.getElementById("endBtn").disabled = true;
-      
-      try {
-        await db.collection("sessionsSchedule").doc(currentSessionId).update({
-          currentToken: null,
-          ended: true
-        });
-        
-        alert("✅ تم إنهاء الحصة. لا يمكن تسجيل حضور جديد.");
-        clearQRCode();
-        document.getElementById("endBtn").style.display = "none";
-        document.getElementById("qrSection").style.display = "none";
-        
-      } catch (error) {
-        console.error("Error ending session:", error);
-        alert("حدث خطأ في إنهاء الحصة: " + error.message);
-      } finally {
-        // إعادة عرض الزر لحالته الطبيعية
-        document.getElementById("endBtnText").style.display = "inline";
-        document.getElementById("endBtnLoading").style.display = "none";
-        document.getElementById("endBtn").disabled = false;
-      }
-    }
-
-    // تنظيف الـ QR
-    function clearQRCode() {
-      if (qrInterval) {
-        clearInterval(qrInterval);
-        qrInterval = null;
-      }
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-      
-      // تنظيف Canvas
-      const canvas = document.getElementById("qrCode");
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      document.getElementById("qrSection").style.display = "none";
-      document.getElementById("attendanceCount").textContent = 0;
-      document.getElementById("attendanceList").innerHTML = '<div class="empty-state">لم يسجل أي طالب حضوراً بعد</div>';
-    }
-
-    // التحقق من اتصال الإنترنت
-    window.addEventListener('online', function() {
-      console.log("Internet connection restored");
-    });
-
-    window.addEventListener('offline', function() {
-      console.log("Internet connection lost");
-      alert("تم فقدان الاتصال بالإنترنت. قد لا تعمل بعض الميزات.");
+      currentSession = selected;
+      qrDiv.style.display = "block";
+      updateQRCode();
+      startCountdown();
     });
   </script>
 </body>
 </html>
+ 
 
 
 
